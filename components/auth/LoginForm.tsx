@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useTransition } from "react";
 import {
   Formik,
   Form,
@@ -11,11 +11,12 @@ import {
 } from "formik";
 import * as Yup from "yup";
 import { cn } from "@/lib/utils";
-import { EyeIcon, EyeOffIcon } from "lucide-react";
+import { EyeIcon, EyeOffIcon, Loader2Icon } from "lucide-react";
 import { LogInFormData } from "@/types/auth";
 import { FcGoogle } from "react-icons/fc";
 import Link from "next/link";
 import { Button } from "../ui/button";
+import { createSupabaseClient } from "@/supabase/client";
 
 type FormFieldProps = {
   id: string;
@@ -61,6 +62,16 @@ export default function LogInForm({
 }: {
   onSubmit: (values: LogInFormData) => Promise<void>;
 }) {
+  const [logginInWithGoogle, startLogginInWithGoogle] = useTransition();
+  const loginWithGoogle = () => {
+    startLogginInWithGoogle(async () => {
+      const supabase = createSupabaseClient();
+      await supabase.auth.signInWithOAuth({
+        provider: "google",
+      });
+    });
+  };
+
   return (
     <Formik
       initialValues={initialValues}
@@ -100,12 +111,20 @@ export default function LogInForm({
           </button>
 
           <Button
-            onClick={() => alert("login with google")}
+            type="button"
+            disabled={logginInWithGoogle}
+            onClick={loginWithGoogle}
             variant="outline"
             className="w-full"
           >
-            <FcGoogle />
-            Login with Google
+            {logginInWithGoogle ? (
+              <Loader2Icon className="animate-spin" />
+            ) : (
+              <FcGoogle />
+            )}
+            {logginInWithGoogle
+              ? "Logging in with Google"
+              : "Login with Google"}
           </Button>
 
           <span className="mx-auto text-muted-foreground">

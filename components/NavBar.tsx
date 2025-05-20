@@ -1,5 +1,5 @@
 "use client";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import React from "react";
 import {
   BarChart3,
@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { Separator } from "./ui/separator";
+import BuisnessSwitcher from "./BuisnessSwitcher";
 
 interface NavItem {
   title: string;
@@ -20,7 +22,6 @@ interface NavItem {
 
 const Navbar = () => {
   const pathname = usePathname();
-  const router = useRouter();
 
   const navItems: NavItem[] = [
     {
@@ -44,8 +45,8 @@ const Navbar = () => {
       icon: Users,
     },
     {
-      title: "Analysis",
-      href: "/analysis",
+      title: "Analytics",
+      href: "/analytics",
       icon: BarChart3,
     },
     {
@@ -58,18 +59,23 @@ const Navbar = () => {
   return (
     <div
       className={`
-        group
-        hover:w-48 w-20 navbar backdrop-blur-lg h-full p-2.5 overflow-hidden
-        transition-all duration-300 ease-in-out z-10 row-start-2 row-end-3 bg-sidebar
+        group flex flex-col
+        hover:w-60 w-19 navbar backdrop-blur-lg p-2.5 overflow-hidden
+        transition-all duration-300 ease-in-out z-10 row-start-2 row-end-3 bg-sidebar max-h-screen
       `}
     >
-      <ul className="flex flex-col h-full list-none p-0 min-w-max">
+      <BuisnessSwitcher />
+      <Separator className="my-2" />
+      <ul className="flex flex-col list-none p-0 min-w-max flex-1 gap-1 transition-all duration-200">
         {navItems.map((navLink, index) => {
           const active = pathname.startsWith(navLink.href);
           return (
             <li
               key={index}
-              className="flex flex-row items-center cursor-pointer rounded-xl hover:bg-muted relative mb-2"
+              className={cn(
+                "flex flex-row items-center cursor-pointer rounded-xl hover:bg-muted relative mb-2",
+                index === navItems.length - 1 ? "mt-auto" : ""
+              )}
             >
               <Link
                 href={navLink.href}

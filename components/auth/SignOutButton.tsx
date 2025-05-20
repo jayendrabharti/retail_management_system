@@ -6,7 +6,11 @@ import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "../ui/button";
 
-export default function SignOutButton() {
+export default function SignOutButton({
+  className = "",
+}: {
+  className?: string;
+}) {
   const router = useRouter();
   const [signingOut, startSignOut] = useTransition();
 
@@ -15,12 +19,12 @@ export default function SignOutButton() {
       onClick={() => {
         startSignOut(async () => {
           await signOutAction();
-          router.refresh();
+          router.push("/login");
         });
       }}
       disabled={signingOut}
       variant={"outline"}
-      className="active:scale-90"
+      className={cn(`active:scale-90 ${className}`)}
     >
       {signingOut ? (
         <Loader2Icon className="size-4 animate-spin" />

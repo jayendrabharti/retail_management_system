@@ -1,4 +1,4 @@
-import { headers } from "next/headers";
+// import { headers } from "next/headers";
 
 export const getErrorMessage = (
   error: unknown,
@@ -12,13 +12,13 @@ export const getErrorMessage = (
   return errorMessage;
 };
 
-export default async function getBaseURL() {
-  const headerList = await headers();
-  const proto = headerList.get("x-forwarded-proto");
-  const host = headerList.get("x-forwarded-host");
-  const baseURL = `${proto}://${host}`;
-  return baseURL;
-}
+// export default async function getBaseURL() {
+//   const headerList = await headers();
+//   const proto = headerList.get("x-forwarded-proto");
+//   const host = headerList.get("x-forwarded-host");
+//   const baseURL = `${proto}://${host}`;
+//   return baseURL;
+// }
 
 export const formatTimestamp = (
   timestamp: string | number | Date,
