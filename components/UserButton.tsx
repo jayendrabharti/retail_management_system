@@ -19,30 +19,45 @@ interface UserButtonProps {
 }
 
 const UserButton: React.FC<UserButtonProps> = ({ className }) => {
-  const { session } = useSession();
-  const user = session?.user;
-
-  if (session)
+  const { user } = useSession();
+  const initials = user?.user_metadata?.name
+    ? user.user_metadata.name
+        .split(" ")
+        .map((n: string) => n.charAt(0).toUpperCase())
+        .join("")
+        .slice(0, 2)
+    : user?.email
+      ? user.email.slice(0, 2).toUpperCase()
+      : user?.phone
+        ? user.phone.replace(/^\+/, "").slice(0, 2)
+        : "";
+  if (user)
     return (
       <div className={cn("flex items-center", className)}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Avatar className="cursor-pointer">
               <AvatarImage src={user?.user_metadata.image} />
-              <AvatarFallback>JB</AvatarFallback>
+              <AvatarFallback>{initials}</AvatarFallback>
             </Avatar>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <div className="px-3 py-2">
-              <span className="block font-medium text-sm text-gray-900 dark:text-gray-100">
-                {user?.user_metadata.full_name}
-              </span>
-              <span className="block text-xs text-gray-500 dark:text-gray-400">
-                +{user?.phone}
-              </span>
-              <span className="block text-xs text-gray-500 dark:text-gray-400">
-                {user?.email || user?.user_metadata.email}
-              </span>
+              {user?.user_metadata.full_name && (
+                <span className="block font-medium text-sm text-gray-900 dark:text-gray-100">
+                  {user?.user_metadata.full_name}
+                </span>
+              )}
+              {user?.phone && (
+                <span className="block text-xs text-gray-500 dark:text-gray-400">
+                  +{user?.phone}
+                </span>
+              )}
+              {user?.email && (
+                <span className="block text-xs text-gray-500 dark:text-gray-400">
+                  {user?.email || user?.user_metadata.email}
+                </span>
+              )}
             </div>
             <DropdownMenuSeparator />
             <div className="flex flex-col gap-2 p-1">

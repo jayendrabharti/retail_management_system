@@ -74,8 +74,12 @@ export default function LogInPage() {
         email: phoneOrEmail,
       });
       if (errorMessage) {
-        toast.error(errorMessage, {
-          style: { background: "#ef4444", color: "#fff" }, // Tailwind red-500
+        toast.error("User not Found !!", {
+          description: "You need to Sign Up first.",
+          action: {
+            label: "Sign Up",
+            onClick: () => router.push("/signup"),
+          },
         });
         return;
       }
@@ -89,9 +93,14 @@ export default function LogInPage() {
       const { errorMessage } = await loginAction({
         phone: `+91${phoneOrEmail}`,
       });
+
       if (errorMessage) {
-        toast.error(errorMessage, {
-          style: { background: "#ef4444", color: "#fff" }, // Tailwind red-500
+        toast.error("User not Found !!", {
+          description: "You need to Sign Up first.",
+          action: {
+            label: "Sign Up",
+            onClick: () => router.push("/signup"),
+          },
         });
         return;
       }

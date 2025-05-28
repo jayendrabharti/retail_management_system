@@ -11,8 +11,8 @@ import {
 } from "@/components/ui/input-otp";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { useSession } from "@/providers/SessionProvider";
 import { toast } from "sonner";
+import { createSupabaseClient } from "@/supabase/client";
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -22,8 +22,6 @@ export default function SignUpPage() {
   const [verificationInfo, setVerificationInfo] = useState({
     phone: "",
   });
-
-  const { refreshSession } = useSession();
 
   const verify = () => {
     if (!(verificationInfo.phone && otp)) return;
@@ -43,7 +41,8 @@ export default function SignUpPage() {
       toast.success("Verified!!", {
         style: { background: "#22c55e", color: "#fff" }, // Tailwind green-500
       });
-      refreshSession();
+      const supabase = createSupabaseClient();
+      await supabase.auth.refreshSession();
       router.push(`/account_settings`);
     });
   };

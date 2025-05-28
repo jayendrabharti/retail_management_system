@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { SignUpFormData } from "@/types/auth";
 import { EyeIcon, EyeOffIcon } from "lucide-react";
 import Link from "next/link";
+// import LoginWithGoogle from "../LoginWithGoogle";
 
 type FormFieldProps = {
   id: string;
@@ -27,7 +28,6 @@ type FormFieldProps = {
 
 const SignUpSchema: Yup.Schema = Yup.object().shape({
   full_name: Yup.string().required("Name is required"),
-  email: Yup.string().email("Invalid email").required("Email is required"),
   phone: Yup.string()
     .transform((value) => value.replace(/\D/g, ""))
     .matches(/^\d{10}$/, "Phone must be exactly 10 digits")
@@ -36,7 +36,6 @@ const SignUpSchema: Yup.Schema = Yup.object().shape({
 
 const initialValues: SignUpFormData = {
   full_name: "",
-  email: "",
   phone: "",
 };
 
@@ -49,33 +48,12 @@ const formFields: FormFieldProps[] = [
     autoComplete: "name",
   },
   {
-    id: "email",
-    name: "email",
-    type: "email",
-    label: "Email (@)",
-    autoComplete: "email",
-  },
-  {
     id: "phone",
     name: "phone",
     type: "text",
     label: "Phone (+91)",
     autoComplete: "tel",
   },
-  // {
-  //   id: "password",
-  //   name: "password",
-  //   type: "password",
-  //   label: "Password",
-  //   autoComplete: "new-password",
-  // },
-  // {
-  //   id: "confirmPassword",
-  //   name: "confirmPassword",
-  //   type: "password",
-  //   label: "Confirm Password",
-  //   autoComplete: "new-password",
-  // },
 ];
 
 export default function SignUpForm({
@@ -139,6 +117,8 @@ export default function SignUpForm({
           >
             {isSubmitting ? "Signing up..." : "Sign Up"}
           </button>
+
+          {/* <LoginWithGoogle type={"signup"} /> */}
 
           <span className="mx-auto text-muted-foreground">
             Already have an account?&nbsp;

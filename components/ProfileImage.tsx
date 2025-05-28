@@ -13,6 +13,7 @@ import { convertBlobUrlToFile } from "@/lib/utils";
 import { uploadImage } from "@/supabase/storage";
 import { updateUserAction } from "@/actions/auth";
 import { toast } from "sonner";
+import { createSupabaseClient } from "@/supabase/client";
 
 async function getCroppedImg(
   image: HTMLImageElement,
@@ -50,13 +51,7 @@ async function getCroppedImg(
   });
 }
 
-export default function ProfileImage({
-  user,
-  refreshSession,
-}: {
-  user?: User | null;
-  refreshSession?: () => Promise<void>;
-}) {
+export default function ProfileImage({ user }: { user?: User | null }) {
   const [imageUrl, setImageUrl] = useState<string | null>(
     user?.user_metadata.image || null
   );
@@ -98,13 +93,18 @@ export default function ProfileImage({
           alert(error);
           return;
         }
-        await updateUserAction({ image: imageUrl });
-        setImageUrl(imageUrl);
-        toast.success("Updated Profile Image successfully !!", {
-          style: { background: "#22c55e", color: "#fff" }, // Tailwind green-500
-        });
-        setSrc(null);
-        refreshSession?.();
+        const { errorMessage } = await updateUserAction({ image: imageUrl });
+        if (errorMessage) {
+          toast.error(errorMessage);
+        } else {
+          setImageUrl(imageUrl);
+          const supabase = createSupabaseClient();
+          await supabase.auth.refreshSession();
+          toast.success("Updated Profile Image successfully !!", {
+            style: { background: "#22c55e", color: "#fff" }, // Tailwind green-500
+          });
+          setSrc(null);
+        }
       }
     });
   };

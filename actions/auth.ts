@@ -18,7 +18,6 @@ export const signUpAction = async (formData: SignUpFormData) => {
         shouldCreateUser: true,
         data: {
           full_name: formData.full_name,
-          email: formData.email,
           phone: formData.phone,
         },
       },
@@ -91,6 +90,7 @@ export const loginAction = async (formData: LogInData) => {
 
     return { data: data, errorMessage: null };
   } catch (error) {
+    console.log(error);
     return { data: null, errorMessage: getErrorMessage(error) };
   }
 };
@@ -123,7 +123,9 @@ export const updateUserAction = async (data: unknown) => {
   }
 };
 
-export const sendEmailVerificationOTPAction = async () => {
+export const sendNewEmailVerificationOTPAction = async (data: {
+  email: string;
+}) => {
   const supabaseAdmin = await createSupabaseAdminClient();
   const transporter = nodemailer.createTransport({
     service: "gmail",
@@ -133,8 +135,7 @@ export const sendEmailVerificationOTPAction = async () => {
     },
   });
 
-  const user = await getUser();
-  const email = user?.user_metadata?.email;
+  const { email } = data;
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
   try {
@@ -158,31 +159,30 @@ export const sendEmailVerificationOTPAction = async () => {
   }
 };
 
-export const verifyEmailAction = async (formData: { otp: string }) => {
+export const verifyNewEmailAction = async (formData: {
+  email: string;
+  otp: string;
+}) => {
   const supabaseAdmin = await createSupabaseAdminClient();
   const user = await getUser();
-  const email = user?.user_metadata?.email;
+  const { email } = formData;
   const otp = user?.user_metadata?.email_otp;
   try {
     if (formData.otp !== otp) {
       throw new Error("Invalid OTP");
     }
 
-    const { error } = await supabaseAdmin.auth.updateUser({
-      data: { email_verified: true },
-    });
     if (user) {
-      const { error: error2 } = await supabaseAdmin.auth.admin.updateUserById(
-        user.id,
-        {
+      const { error } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
+        email: email,
+        user_metadata: {
           email: email,
           email_confirm: true,
-        }
-      );
-      if (error2) throw error2;
+        },
+      });
+      if (error) throw error;
     }
 
-    if (error) throw error;
     if (email.includes("@gmail.com")) {
       await supabaseAdmin.auth.linkIdentity({ provider: "google" });
     }

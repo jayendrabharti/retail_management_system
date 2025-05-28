@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useTransition } from "react";
+import React, { useState } from "react";
 import {
   Formik,
   Form,
@@ -11,12 +11,10 @@ import {
 } from "formik";
 import * as Yup from "yup";
 import { cn } from "@/lib/utils";
-import { EyeIcon, EyeOffIcon, Loader2Icon } from "lucide-react";
+import { EyeIcon, EyeOffIcon } from "lucide-react";
 import { LogInFormData } from "@/types/auth";
-import { FcGoogle } from "react-icons/fc";
 import Link from "next/link";
-import { Button } from "../ui/button";
-import { createSupabaseClient } from "@/supabase/client";
+// import LoginWithGoogle from "../LoginWithGoogle";
 
 type FormFieldProps = {
   id: string;
@@ -62,16 +60,6 @@ export default function LogInForm({
 }: {
   onSubmit: (values: LogInFormData) => Promise<void>;
 }) {
-  const loginWithGoogle = async () => {
-    const supabase = createSupabaseClient();
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
-  };
-
   return (
     <Formik
       initialValues={initialValues}
@@ -108,15 +96,7 @@ export default function LogInForm({
             {isSubmitting ? "Logging in..." : "Log In"}
           </button>
 
-          <Button
-            type="button"
-            onClick={loginWithGoogle}
-            variant="outline"
-            className="w-full"
-          >
-            <FcGoogle />
-            Login with Google
-          </Button>
+          {/* <LoginWithGoogle /> */}
 
           <span className="mx-auto text-muted-foreground">
             Don't have an account?&nbsp;
