@@ -35,7 +35,7 @@ const UserButton: React.FC<UserButtonProps> = ({ className }) => {
           <DropdownMenuContent align="end">
             <div className="px-3 py-2">
               <span className="block font-medium text-sm text-gray-900 dark:text-gray-100">
-                {user?.user_metadata.name}
+                {user?.user_metadata.full_name}
               </span>
               <span className="block text-xs text-gray-500 dark:text-gray-400">
                 +{user?.phone}

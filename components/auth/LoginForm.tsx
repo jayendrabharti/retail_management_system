@@ -62,13 +62,13 @@ export default function LogInForm({
 }: {
   onSubmit: (values: LogInFormData) => Promise<void>;
 }) {
-  const [logginInWithGoogle, startLogginInWithGoogle] = useTransition();
-  const loginWithGoogle = () => {
-    startLogginInWithGoogle(async () => {
-      const supabase = createSupabaseClient();
-      await supabase.auth.signInWithOAuth({
-        provider: "google",
-      });
+  const loginWithGoogle = async () => {
+    const supabase = createSupabaseClient();
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
     });
   };
 
@@ -78,8 +78,6 @@ export default function LogInForm({
       validationSchema={SignUpSchema}
       onSubmit={async (values, { resetForm, setSubmitting }) => {
         await onSubmit(values);
-        // resetForm();
-        // setSubmitting(false);
       }}
     >
       {({ isSubmitting, errors, touched }) => (
@@ -112,19 +110,12 @@ export default function LogInForm({
 
           <Button
             type="button"
-            disabled={logginInWithGoogle}
             onClick={loginWithGoogle}
             variant="outline"
             className="w-full"
           >
-            {logginInWithGoogle ? (
-              <Loader2Icon className="animate-spin" />
-            ) : (
-              <FcGoogle />
-            )}
-            {logginInWithGoogle
-              ? "Logging in with Google"
-              : "Login with Google"}
+            <FcGoogle />
+            Login with Google
           </Button>
 
           <span className="mx-auto text-muted-foreground">

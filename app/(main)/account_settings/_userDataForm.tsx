@@ -52,7 +52,7 @@ export default function UserDataForm({
 
   const updateName = async (newName: string) => {
     if (newName) {
-      const { errorMessage } = await updateUserAction({ name: newName });
+      const { errorMessage } = await updateUserAction({ full_name: newName });
 
       if (errorMessage) {
         toast.error("Unable to Update !!", {
@@ -134,7 +134,7 @@ export default function UserDataForm({
       <Separator className="my-4" />
       <div className="flex items-center gap-2">
         <strong className="text-muted-foreground">Name:</strong>
-        <span>{user?.user_metadata?.name || "N/A"}</span>
+        <span>{user?.user_metadata?.full_name || "N/A"}</span>
         <Dialog open={openNameDialog} onOpenChange={setOpenNameDialog}>
           <DialogTrigger asChild>
             <Button size={"sm"}>
@@ -150,12 +150,12 @@ export default function UserDataForm({
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="Name" className="text-right">
+                <Label htmlFor="full_name" className="text-right">
                   Name
                 </Label>
                 <Input
-                  id="name"
-                  defaultValue={user?.user_metadata?.name}
+                  id="full_name"
+                  defaultValue={user?.user_metadata?.full_name}
                   className="col-span-3"
                   ref={nameInputRef}
                 />

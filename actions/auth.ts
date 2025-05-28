@@ -17,7 +17,7 @@ export const signUpAction = async (formData: SignUpFormData) => {
         channel: "sms",
         shouldCreateUser: true,
         data: {
-          name: formData.name,
+          full_name: formData.full_name,
           email: formData.email,
           phone: formData.phone,
         },

@@ -2,12 +2,6 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function middleware(request: NextRequest) {
-  const response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
-  });
-
   const path = new URL(request.url).pathname;
 
   const protectedRoutes = [
@@ -16,8 +10,7 @@ export async function middleware(request: NextRequest) {
     "/inventory",
     "/analytics",
     "/account_settings",
-    "/parties",
-    "settings",
+    "/settings",
   ];
   const authRoutes = ["/login", "/signup"];
 
@@ -25,6 +18,8 @@ export async function middleware(request: NextRequest) {
     (route) => path === route || path.startsWith(`${route}/`)
   );
   const isAuthRoute = authRoutes.includes(path);
+
+  const response = NextResponse.next();
 
   if (isProtectedRoute || isAuthRoute) {
     const user = await getUser(request, response);
@@ -57,16 +52,6 @@ async function getUser(request: NextRequest, response: NextResponse) {
           return request.cookies.get(name)?.value;
         },
         set(name: string, value: string, options: CookieOptions) {
-          request.cookies.set({
-            name,
-            value,
-            ...options,
-          });
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          });
           response.cookies.set({
             name,
             value,
@@ -74,16 +59,6 @@ async function getUser(request: NextRequest, response: NextResponse) {
           });
         },
         remove(name: string, options: CookieOptions) {
-          request.cookies.set({
-            name,
-            value: "",
-            ...options,
-          });
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          });
           response.cookies.set({
             name,
             value: "",
@@ -94,7 +69,6 @@ async function getUser(request: NextRequest, response: NextResponse) {
     }
   );
 
-  const user = (await supabaseClient.auth.getUser()).data.user;
-
-  return user;
+  const { data } = await supabaseClient.auth.getUser();
+  return data.user;
 }

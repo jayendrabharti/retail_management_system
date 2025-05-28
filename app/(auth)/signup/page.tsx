@@ -44,7 +44,7 @@ export default function SignUpPage() {
         style: { background: "#22c55e", color: "#fff" }, // Tailwind green-500
       });
       refreshSession();
-      router.push(`/dashboard`);
+      router.push(`/account_settings`);
     });
   };
 
@@ -65,7 +65,7 @@ export default function SignUpPage() {
       <div className="flex flex-col space-y-4 bg-background p-5 rounded-lg border border-border m-2 w-max">
         <h2 className="text-2xl font-bold mb-4 mx-auto">Verify Phone Number</h2>
         <span className="mx-auto text-muted-foreground">
-          OTP has been sent to +{verificationInfo.phone}
+          OTP has been sent to {verificationInfo.phone}
         </span>
 
         <div className="w-max mx-auto">

@@ -26,7 +26,7 @@ type FormFieldProps = {
 };
 
 const SignUpSchema: Yup.Schema = Yup.object().shape({
-  name: Yup.string().required("Name is required"),
+  full_name: Yup.string().required("Name is required"),
   email: Yup.string().email("Invalid email").required("Email is required"),
   phone: Yup.string()
     .transform((value) => value.replace(/\D/g, ""))
@@ -35,15 +35,15 @@ const SignUpSchema: Yup.Schema = Yup.object().shape({
 });
 
 const initialValues: SignUpFormData = {
-  name: "",
+  full_name: "",
   email: "",
   phone: "",
 };
 
 const formFields: FormFieldProps[] = [
   {
-    id: "name",
-    name: "name",
+    id: "full_name",
+    name: "full_name",
     type: "text",
     label: "Full Name",
     autoComplete: "name",

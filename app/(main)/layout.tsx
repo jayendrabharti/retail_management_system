@@ -2,7 +2,11 @@ import Header from "@/components/Header";
 import Navbar from "@/components/NavBar";
 import { ReactNode } from "react";
 
-export default function MainLayout({ children }: { children: ReactNode }) {
+export default async function MainLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
   return (
     <div className="min-h-screen flex flex-row">
       <Navbar />
