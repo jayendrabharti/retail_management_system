@@ -7,6 +7,7 @@ import { Button } from "../ui/button";
 import { createSupabaseClient } from "@/supabase/client";
 import { getErrorMessage } from "@/utils/utils";
 import { toast } from "sonner";
+import { removeCurrentBusinessId } from "@/actions/businesses";
 
 export default function SignOutButton({
   className = "",
@@ -27,6 +28,8 @@ export default function SignOutButton({
           } else {
             toast.success("Signed out !!");
           }
+          await supabase.auth.refreshSession();
+          await removeCurrentBusinessId();
           router.push("/login");
         });
       }}

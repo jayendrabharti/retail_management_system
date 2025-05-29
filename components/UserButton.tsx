@@ -20,8 +20,8 @@ interface UserButtonProps {
 
 const UserButton: React.FC<UserButtonProps> = ({ className }) => {
   const { user } = useSession();
-  const initials = user?.user_metadata?.name
-    ? user.user_metadata.name
+  const initials = user?.user_metadata?.full_name
+    ? user.user_metadata.full_name
         .split(" ")
         .map((n: string) => n.charAt(0).toUpperCase())
         .join("")

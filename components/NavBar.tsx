@@ -12,7 +12,6 @@ import {
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { Separator } from "./ui/separator";
-import BuisnessSwitcher from "./BuisnessSwitcher";
 
 interface NavItem {
   title: string;
@@ -20,7 +19,13 @@ interface NavItem {
   icon: React.ElementType;
 }
 
-const Navbar = () => {
+import { ReactNode } from "react";
+
+interface NavbarProps {
+  children?: ReactNode;
+}
+
+export default function Navbar({ children }: NavbarProps) {
   const pathname = usePathname();
 
   const navItems: NavItem[] = [
@@ -64,7 +69,7 @@ const Navbar = () => {
         transition-all duration-300 ease-in-out z-10 row-start-2 row-end-3 bg-sidebar max-h-screen
       `}
     >
-      <BuisnessSwitcher />
+      {children}
       <Separator className="my-2" />
       <ul className="flex flex-col space-y-2 list-none p-0 min-w-max flex-1 gap-1 transition-all duration-200">
         {navItems.map((navLink, index) => {
@@ -116,6 +121,4 @@ const Navbar = () => {
       </ul>
     </div>
   );
-};
-
-export default Navbar;
+}

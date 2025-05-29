@@ -48,7 +48,7 @@ export default function AccountSettings() {
                   <TableCell>
                     <div className="flex flex-row items-center justify-between">
                       {user?.phone ? `+${user.phone}` : "N/A"}
-                      <Badge className="bg-green-600">
+                      <Badge className="bg-green-600 ml-2">
                         <CheckCheckIcon />
                         Verified
                       </Badge>

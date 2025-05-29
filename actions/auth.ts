@@ -177,7 +177,7 @@ export const verifyNewEmailAction = async (formData: {
         email: email,
         user_metadata: {
           email: email,
-          email_confirm: true,
+          email_verified: true,
         },
       });
       if (error) throw error;

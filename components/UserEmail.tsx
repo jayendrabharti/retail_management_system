@@ -94,12 +94,12 @@ export default function UserEmail({ user }: { user: User }) {
     <div className="flex items-center gap-2">
       <span>{user?.email || "N/A"}</span>
       {user?.user_metadata.email_verified ? (
-        <Badge className="bg-green-600">
+        <Badge className="bg-green-600 ml-2">
           <CheckCheckIcon />
           Verified
         </Badge>
       ) : (
-        <Badge variant={"destructive"}>
+        <Badge variant={"destructive"} className="ml-2">
           <XIcon />
           Unverified
         </Badge>

@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  output   = "./prismaClient"
 }
 
 datasource db {
@@ -8,28 +9,10 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-model Users {
-  id          String       @id @default(uuid())
-  name        String
-  email       String       @unique
-  phone       String       @unique
-  image       String?
-  role        Role         @default(CUSTOMER)
-  password    String
-  preferences Preferences?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-}
-
-model Preferences {
-  id           String  @id @default(uuid())
-  emailUpdated Boolean @default(true)
-  userId       String  @unique
-  user         Users   @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-enum Role {
-  ADMIN
-  RETAILER
-  CUSTOMER
+model Businesses {
+  id        String   @id @unique @default(uuid())
+  name      String
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
