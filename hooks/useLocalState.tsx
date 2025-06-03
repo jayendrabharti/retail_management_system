@@ -6,20 +6,24 @@ function useLocalState<T>(
   key: string,
   initialValue: T
 ): [T, React.Dispatch<React.SetStateAction<T>>] {
-  const [state, setState] = useState<T>(() => {
+  const [state, setState] = useState<T>(initialValue);
+
+  useEffect(() => {
     if (typeof window === "undefined") {
-      return initialValue;
+      return;
     }
     try {
       const storedValue = localStorage.getItem(key);
-      return storedValue !== null
-        ? (JSON.parse(storedValue) as T)
-        : initialValue;
+      if (storedValue !== null) {
+        setState(JSON.parse(storedValue) as T);
+      } else {
+        setState(initialValue);
+      }
     } catch (error) {
       console.error("Error reading localStorage key “" + key + "”: ", error);
-      return initialValue;
+      setState(initialValue);
     }
-  });
+  }, [key, initialValue]);
 
   useEffect(() => {
     try {

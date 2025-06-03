@@ -19,11 +19,15 @@ export default async function AuthorizedPage() {
       <div className="flex flex-col sm:flex-row gap-2">
         <Button variant={"outline"} className="active:scale-90">
           <HomeIcon className="size-4" />
-          <Link href={"/"}>Homepage</Link>
+          <Link href={"/"} prefetch={true}>
+            Homepage
+          </Link>
         </Button>
         <Button variant={"outline"} className="active:scale-90">
           <LayoutDashboardIcon className="size-4" />
-          <Link href={"/dashboard"}>Dashboard</Link>
+          <Link href={"/dashboard"} prefetch={true}>
+            Dashboard
+          </Link>
         </Button>
 
         <SignOutButton />

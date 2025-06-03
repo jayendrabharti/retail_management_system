@@ -18,17 +18,23 @@ export default async function UnauthorizedPage() {
       <div className="flex flex-col sm:flex-row gap-2">
         <Button variant={"outline"} className="active:scale-90">
           <HomeIcon className="size-4" />
-          <Link href={"/"}>Homepage</Link>
+          <Link href={"/"} prefetch={true}>
+            Homepage
+          </Link>
         </Button>
 
         <Button variant={"outline"} className="active:scale-90">
           <LogInIcon className="size-4" />
-          <Link href={"/login"}>Log In</Link>
+          <Link href={"/login"} prefetch={true}>
+            Log In
+          </Link>
         </Button>
 
         <Button variant={"outline"} className="active:scale-90">
           <UserPlusIcon className="size-4" />
-          <Link href={"/signup"}>Sign Up</Link>
+          <Link href={"/signup"} prefetch={true}>
+            Sign Up
+          </Link>
         </Button>
       </div>
     </>

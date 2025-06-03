@@ -1,7 +1,7 @@
 "use client";
 
 import { getBusinessAction } from "@/actions/businesses";
-import { Businesses } from "@/prisma/prismaClient";
+import { Businesses } from "@prisma/client";
 import { LoaderCircleIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -27,6 +27,41 @@ export default function Page() {
 
   return (
     <div className="">
+      <p>{JSON.stringify(b)}</p>
+      <p>{JSON.stringify(b)}</p>
+      <p>{JSON.stringify(b)}</p>
+      <p>{JSON.stringify(b)}</p>
+      <p>{JSON.stringify(b)}</p>
+      <p>{JSON.stringify(b)}</p>
+      <p>{JSON.stringify(b)}</p>
+      <p>{JSON.stringify(b)}</p>
+      <p>{JSON.stringify(b)}</p>
+      <p>{JSON.stringify(b)}</p>
+      <p>{JSON.stringify(b)}</p>
+      <p>{JSON.stringify(b)}</p>
+      <p>{JSON.stringify(b)}</p>
+      <p>{JSON.stringify(b)}</p>
+      <p>{JSON.stringify(b)}</p>
+      <p>{JSON.stringify(b)}</p>
+      <p>{JSON.stringify(b)}</p>
+      <p>{JSON.stringify(b)}</p>
+      <p>{JSON.stringify(b)}</p>
+      <p>{JSON.stringify(b)}</p>
+      <p>{JSON.stringify(b)}</p>
+      <p>{JSON.stringify(b)}</p>
+      <p>{JSON.stringify(b)}</p>
+      <p>{JSON.stringify(b)}</p>
+      <p>{JSON.stringify(b)}</p>
+      <p>{JSON.stringify(b)}</p>
+      <p>{JSON.stringify(b)}</p>
+      <p>{JSON.stringify(b)}</p>
+      <p>{JSON.stringify(b)}</p>
+      <p>{JSON.stringify(b)}</p>
+      <p>{JSON.stringify(b)}</p>
+      <p>{JSON.stringify(b)}</p>
+      <p>{JSON.stringify(b)}</p>
+      <p>{JSON.stringify(b)}</p>
+      <p>{JSON.stringify(b)}</p>
       <p>{JSON.stringify(b)}</p>
     </div>
   );

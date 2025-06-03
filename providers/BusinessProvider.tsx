@@ -3,7 +3,8 @@ import {
   getBusinessesAction,
   setCurrentBusinessId,
 } from "@/actions/businesses";
-import { Businesses } from "@/prisma/prismaClient";
+import { createSupabaseClient } from "@/supabase/client";
+import { Businesses } from "@prisma/client";
 import { useRouter } from "next/navigation";
 import {
   createContext,
@@ -12,6 +13,7 @@ import {
   useEffect,
   useState,
 } from "react";
+import { useSession } from "./SessionProvider";
 
 type BusinessContextType = {
   businessId: string;
@@ -35,18 +37,36 @@ export function BusinessProvider({
   const [businessId, setBusinessId] = useState<string>(currentBusinessId);
   const [businesses, setBusinesses] = useState<Businesses[]>([]);
   const router = useRouter();
+  const { user } = useSession();
 
-  const getBusinesses = async () => {
-    const { data: businesses } = await getBusinessesAction();
-    setBusinesses(businesses ?? []);
-  };
   useEffect(() => {
+    const getBusinesses = async () => {
+      const data = await getBusinessesAction();
+      if (!data) return;
+
+      const businesses = data.data;
+      const userBusinesses = businesses?.map((b) => {
+        if (user?.id) {
+          return {
+            ...b,
+            owner: "(You)",
+          };
+        } else {
+          return {
+            ...b,
+            owner: "(unknown)",
+          };
+        }
+      });
+      setBusinesses(userBusinesses ?? []);
+    };
     getBusinesses();
-  }, [businessId]);
+  }, [businessId, user]);
 
   const switchBusinessId = async ({ id }: { id: string }) => {
     await setCurrentBusinessId({ id: id });
-    await getBusinesses();
+    // await getBusinesses();
+    setBusinessId(id);
     setBusinessId(id);
     router.refresh();
   };

@@ -105,6 +105,7 @@ export default function SignUpForm({
             <Link
               href={`/terms-and-conditons`}
               className="text-primary hover:underline font-bold"
+              prefetch={true}
             >
               Terms & Conditions
             </Link>
@@ -125,6 +126,7 @@ export default function SignUpForm({
             <Link
               href={`/login`}
               className="text-primary hover:underline font-bold"
+              prefetch={true}
             >
               Login
             </Link>

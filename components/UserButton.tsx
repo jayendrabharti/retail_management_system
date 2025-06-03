@@ -66,7 +66,9 @@ const UserButton: React.FC<UserButtonProps> = ({ className }) => {
                 className="mx-auto w-full flex items-center justify-start"
               >
                 <UserRoundCogIcon />
-                <Link href="/account_settings">Account Settings</Link>
+                <Link href="/account_settings" prefetch={true}>
+                  Account Settings
+                </Link>
               </Button>
               <SignOutButton className="mx-auto w-full flex items-center justify-start" />
             </div>

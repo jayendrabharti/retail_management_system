@@ -103,6 +103,7 @@ export default function LogInForm({
             <Link
               href={`/signup`}
               className="text-primary hover:underline font-bold"
+              prefetch={true}
             >
               Sign Up
             </Link>

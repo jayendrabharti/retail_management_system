@@ -13,7 +13,7 @@ import { Separator } from "./ui/separator";
 import AddNewBusiness from "./AddNewBusiness";
 import { useCurrentBusiness } from "@/providers/BusinessProvider";
 
-export default function BusinessSwitcher() {
+export default function BusinessSwitcher({ expanded }: { expanded: boolean }) {
   const { businessId, switchBusinessId, businesses } = useCurrentBusiness();
 
   const selectedBusiness = businesses.find((b) => b.id === businessId);
@@ -23,7 +23,8 @@ export default function BusinessSwitcher() {
       <DropdownMenuTrigger asChild>
         <div
           className={cn(
-            "flex flex-row items-center gap-4 cursor-pointer rounded-xl group-hover:bg-muted relative p-2"
+            "flex flex-row items-center gap-4 cursor-pointer rounded-xl group-hover:bg-muted relative p-2",
+            expanded ? "bg-muted" : ""
           )}
         >
           <Avatar className="size-10">
@@ -39,10 +40,13 @@ export default function BusinessSwitcher() {
           </Avatar>
 
           <span
-            className={`truncate
+            className={cn(
+              `truncate
                   text-foreground opacity-0 pointer-events-none
                   group-hover:opacity-100 group-hover:pointer-events-auto
-                  transition-opacity duration-200 w-max`}
+                  transition-opacity duration-200 w-max`,
+              expanded ? "opacity-100 pointer-events-auto" : ""
+            )}
           >
             {selectedBusiness?.name || "Select Business"}
           </span>

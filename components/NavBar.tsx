@@ -1,17 +1,14 @@
 "use client";
 import { usePathname } from "next/navigation";
 import React, { Fragment } from "react";
-import {
-  BarChart3,
-  CreditCard,
-  Home,
-  Package,
-  Settings,
-  Users,
-} from "lucide-react";
+import { BarChart3, Package, Settings, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { Separator } from "./ui/separator";
+import { LuLayoutDashboard } from "react-icons/lu";
+import { PiInvoiceDuotone } from "react-icons/pi";
+import BusinessSwitcher from "./BuisnessSwitcher";
+import { useData } from "@/providers/DataProvider";
 
 interface NavItem {
   title: string;
@@ -19,20 +16,14 @@ interface NavItem {
   icon: React.ElementType;
 }
 
-import { ReactNode } from "react";
-
-interface NavbarProps {
-  children?: ReactNode;
-}
-
-export default function Navbar({ children }: NavbarProps) {
+export default function Navbar() {
   const pathname = usePathname();
 
   const navItems: NavItem[] = [
     {
       title: "Dashboard",
       href: "/dashboard",
-      icon: Home,
+      icon: LuLayoutDashboard,
     },
     {
       title: "Inventory",
@@ -42,7 +33,8 @@ export default function Navbar({ children }: NavbarProps) {
     {
       title: "Bills",
       href: "/bills",
-      icon: CreditCard,
+      icon: PiInvoiceDuotone,
+      // icon: CreditCard,
     },
     {
       title: "Parties",
@@ -61,15 +53,18 @@ export default function Navbar({ children }: NavbarProps) {
     },
   ];
 
+  const { expanded } = useData();
+
   return (
     <div
-      className={`
-        group flex flex-col
+      className={cn(
+        `group flex flex-col
         hover:w-60 w-19 navbar backdrop-blur-lg p-2.5 overflow-hidden
-        transition-all duration-300 ease-in-out z-10 row-start-2 row-end-3 bg-sidebar max-h-screen
-      `}
+        transition-all duration-300 ease-in-out z-10 row-start-2 row-end-3 bg-sidebar max-h-screen`,
+        expanded ? "w-60" : ""
+      )}
     >
-      {children}
+      <BusinessSwitcher expanded={expanded} />
       <Separator className="my-2" />
       <ul className="flex flex-col space-y-2 list-none p-0 min-w-max flex-1 gap-1 transition-all duration-200">
         {navItems.map((navLink, index) => {
@@ -85,6 +80,7 @@ export default function Navbar({ children }: NavbarProps) {
                 <Link
                   href={navLink.href}
                   className="flex flex-row items-center w-full h-full"
+                  prefetch={true}
                 >
                   <navLink.icon
                     className={`${active ? "bg-primary text-primary-foreground" : "text-muted-foreground"} size-8 p-1.5 m-2.5 rounded-lg peer`}
@@ -97,7 +93,8 @@ export default function Navbar({ children }: NavbarProps) {
                       active
                         ? "text-foreground top-[90%] font-bold"
                         : "text-muted-foreground top-[80%]",
-                      `group-hover:opacity-0 group-hover:pointer-events-none transition-opacity duration-200`
+                      `group-hover:opacity-0 group-hover:pointer-events-none transition-opacity duration-200`,
+                      expanded ? "opacity-0 pointer-events-none" : ""
                     )}
                   >
                     {navLink.title}
@@ -105,11 +102,16 @@ export default function Navbar({ children }: NavbarProps) {
 
                   {/* Expanded label */}
                   <span
-                    className={`
+                    className={cn(
+                      `
                     text-foreground opacity-0 pointer-events-none
                     group-hover:opacity-100 group-hover:pointer-events-auto
-                    transition-opacity duration-200
-                    ${active ? "text-foreground font-bold" : "text-muted-foreground"}`}
+                    transition-opacity duration-200`,
+                      active
+                        ? "text-foreground font-bold"
+                        : "text-muted-foreground",
+                      expanded ? "opacity-100 pointer-events-auto" : ""
+                    )}
                   >
                     {navLink.title}
                   </span>
