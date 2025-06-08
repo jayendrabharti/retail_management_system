@@ -1,6 +1,13 @@
 "use client";
 import useLocalState from "@/hooks/useLocalState";
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import { LoaderCircleIcon } from "lucide-react";
+import React, {
+  createContext,
+  useContext,
+  ReactNode,
+  useState,
+  useEffect,
+} from "react";
 
 type DataContextType = {
   expanded: boolean;
@@ -14,6 +21,19 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     "navbar_expanded",
     false
   );
+  const [loading, setLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    setLoading(false);
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="w-full h-full flex justify-center items-center">
+        <LoaderCircleIcon className="animate-spin size-20" />
+      </div>
+    );
+  }
 
   return (
     <DataContext.Provider value={{ expanded, setExpanded }}>

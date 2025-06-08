@@ -1,7 +1,7 @@
-import React from "react";
+import { getBusinessAction } from "@/actions/businesses";
 
-const page = () => {
-  return <div>Bills</div>;
-};
+export default async function BillsPage() {
+  const { data } = await getBusinessAction();
 
-export default page;
+  return <div>{data?.name}</div>;
+}

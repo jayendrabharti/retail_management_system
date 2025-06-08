@@ -5,7 +5,6 @@ import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import Link from "next/link";
@@ -61,15 +60,16 @@ const UserButton: React.FC<UserButtonProps> = ({ className }) => {
             </div>
             <DropdownMenuSeparator />
             <div className="flex flex-col gap-2 p-1">
-              <Button
-                variant={"outline"}
-                className="mx-auto w-full flex items-center justify-start"
-              >
-                <UserRoundCogIcon />
-                <Link href="/account_settings" prefetch={true}>
+              <Link href="/account_settings" prefetch={true}>
+                <Button
+                  variant={"outline"}
+                  className="mx-auto w-full flex items-center justify-start"
+                >
+                  <UserRoundCogIcon />
                   Account Settings
-                </Link>
-              </Button>
+                </Button>
+              </Link>
+
               <SignOutButton className="mx-auto w-full flex items-center justify-start" />
             </div>
           </DropdownMenuContent>

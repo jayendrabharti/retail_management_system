@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Building2Icon, Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
@@ -12,6 +12,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "./ui/separator";
 import AddNewBusiness from "./AddNewBusiness";
 import { useCurrentBusiness } from "@/providers/BusinessProvider";
+import { FaCheck } from "react-icons/fa";
+import Link from "next/link";
+import { Button } from "./ui/button";
 
 export default function BusinessSwitcher({ expanded }: { expanded: boolean }) {
   const { businessId, switchBusinessId, businesses } = useCurrentBusiness();
@@ -54,14 +57,17 @@ export default function BusinessSwitcher({ expanded }: { expanded: boolean }) {
           <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50" />
         </div>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-[220px]">
+      <DropdownMenuContent align="start" className="w-[250px]">
         {businesses.map((business) => (
           <DropdownMenuItem
             key={business.id}
             onSelect={async () => {
               await switchBusinessId({ id: business.id });
             }}
-            className="cursor-pointer py-2"
+            className={cn(
+              "cursor-pointer py-2",
+              businessId === business.id && "border-2 border-muted-foreground"
+            )}
           >
             <div className="flex w-full items-center justify-between">
               <div className="flex items-center gap-2">
@@ -75,12 +81,23 @@ export default function BusinessSwitcher({ expanded }: { expanded: boolean }) {
                 </Avatar>
                 <span>{business.name}</span>
               </div>
-              {businessId === business.id && <Check className="h-4 w-4" />}
+              {businessId === business.id && (
+                <FaCheck className="h-4 w-4 ml-2" />
+              )}
+              {/* <Check className="h-4 w-4 ml-2" />} */}
             </div>
           </DropdownMenuItem>
         ))}
         <Separator className="my-2" />
-        <AddNewBusiness switchBusinessId={switchBusinessId} />
+        <div className="flex flex-col space-y-1">
+          <AddNewBusiness />
+          <Link href={"/businesses"} className="w-full">
+            <Button className="w-full">
+              <Building2Icon className="h-4 w-4" />
+              Manage Businesses
+            </Button>
+          </Link>
+        </div>
       </DropdownMenuContent>
     </DropdownMenu>
   );

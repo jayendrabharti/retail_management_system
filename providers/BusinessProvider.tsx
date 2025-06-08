@@ -1,9 +1,10 @@
 "use client";
 import {
+  deleteBusinessAction,
   getBusinessesAction,
   setCurrentBusinessId,
+  updateBusinessAction,
 } from "@/actions/businesses";
-import { createSupabaseClient } from "@/supabase/client";
 import { Businesses } from "@prisma/client";
 import { useRouter } from "next/navigation";
 import {
@@ -14,17 +15,22 @@ import {
   useState,
 } from "react";
 import { useSession } from "./SessionProvider";
+import { toast } from "sonner";
 
 type BusinessContextType = {
   businessId: string;
   switchBusinessId: (args: { id: string }) => Promise<void>;
   businesses: Businesses[];
+  deleteBusiness: (args: { id: string }) => Promise<void>;
+  updateBusiness: (args: { id: string; name: string }) => Promise<void>;
 };
 
 const BusinessContext = createContext<BusinessContextType>({
   businessId: "",
   switchBusinessId: async () => {},
   businesses: [],
+  deleteBusiness: async () => {},
+  updateBusiness: async () => {},
 });
 
 export function BusinessProvider({
@@ -65,15 +71,59 @@ export function BusinessProvider({
 
   const switchBusinessId = async ({ id }: { id: string }) => {
     await setCurrentBusinessId({ id: id });
-    // await getBusinesses();
     setBusinessId(id);
     setBusinessId(id);
     router.refresh();
   };
 
+  const deleteBusiness = async ({ id }: { id: string }) => {
+    if (businesses.length == 1) {
+      toast.error("You must have atleat one business.");
+      return;
+    }
+
+    const { errorMessage } = await deleteBusinessAction({ id: id });
+    if (errorMessage) {
+      toast.error(errorMessage);
+    } else {
+      toast.success("Deleted Business Successfully !!");
+    }
+
+    if (id == businesses[0].id) {
+      await switchBusinessId({ id: businesses[1].id });
+    } else {
+      await switchBusinessId({ id: businesses[0].id });
+    }
+    setBusinesses((prev) => prev.filter((b) => b.id != id));
+  };
+
+  const updateBusiness = async ({ id, name }: { id: string; name: string }) => {
+    const { errorMessage } = await updateBusinessAction({ id: id, name: name });
+    if (errorMessage) {
+      toast.error(errorMessage);
+    } else {
+      toast.success("Updated Business Successfully !!");
+    }
+
+    setBusinesses((prev) =>
+      prev.map((b) => {
+        if (b.id == id) {
+          return { ...b, name: name };
+        }
+        return b;
+      })
+    );
+  };
+
   return (
     <BusinessContext.Provider
-      value={{ businessId, switchBusinessId, businesses }}
+      value={{
+        businessId,
+        switchBusinessId,
+        businesses,
+        deleteBusiness,
+        updateBusiness,
+      }}
     >
       <Fragment key={businessId}>{children}</Fragment>
     </BusinessContext.Provider>

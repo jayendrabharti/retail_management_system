@@ -1,3 +1,4 @@
+"use client";
 import { Building2Icon, LoaderCircleIcon, PlusIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,12 +15,15 @@ import { useState, useTransition } from "react";
 import { createBusinessAction } from "@/actions/businesses";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { useCurrentBusiness } from "@/providers/BusinessProvider";
+import { cn } from "@/lib/utils";
 
 export default function AddNewBusiness({
-  switchBusinessId,
+  className = "",
 }: {
-  switchBusinessId: (args: { id: string }) => Promise<void>;
+  className?: string;
 }) {
+  const { switchBusinessId } = useCurrentBusiness();
   const [open, setOpen] = useState<boolean>(false);
   const [newBusinessName, setNewBusinessName] = useState<string>("");
   const [adding, startAdding] = useTransition();
@@ -56,8 +60,8 @@ export default function AddNewBusiness({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="w-full">
-          <Building2Icon className="h-4 w-4" />
+        <Button className={cn("w-full", className)}>
+          <PlusIcon className="h-4 w-4" />
           Add new business
         </Button>
       </DialogTrigger>

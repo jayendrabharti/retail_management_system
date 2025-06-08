@@ -1,7 +1,7 @@
 "use server";
 
 import prisma from "@/prisma/client";
-import { Businesses } from "@/prisma/prismaClient";
+import { Businesses } from "@prisma/client";
 import { createSupabaseClient } from "@/supabase/server";
 import { getErrorMessage } from "@/utils/utils";
 import { revalidatePath } from "next/cache";
@@ -111,6 +111,8 @@ export const deleteBusinessAction = async (data: {
       },
     });
 
+    revalidatePath("/businesses");
+
     return { data: business as Businesses, errorMessage: null };
   } catch (error) {
     return { data: null, errorMessage: getErrorMessage(error) };
@@ -143,6 +145,8 @@ export const updateBusinessAction = async (data: {
         ...(data.name !== undefined && { name: data.name }),
       },
     });
+
+    revalidatePath("/businesses");
 
     return { data: business as Businesses, errorMessage: null };
   } catch (error) {

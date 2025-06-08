@@ -27,9 +27,9 @@ export default function SignOutButton({
             toast.error(getErrorMessage(error));
           } else {
             toast.success("Signed out !!");
+            router.push("/login");
+            await supabase.auth.refreshSession();
           }
-          await supabase.auth.refreshSession();
-          router.push("/login");
         });
       }}
       disabled={signingOut}

@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { cn } from "@/lib/utils";
-import { ThemeProvider } from "@/providers/ThemeProvider";
 import Main from "@/components/Main";
 import { Toaster } from "@/components/ui/sonner";
+import { ThemeProvider } from "@/providers/ThemeProvider";
+import { DataProvider } from "@/providers/DataProvider";
 import { SessionProvider } from "@/providers/SessionProvider";
 
 export const metadata: Metadata = {
@@ -20,12 +21,14 @@ export default function RootLayout({
     <html suppressHydrationWarning lang="en">
       <body className={cn("h-dvh w-full")}>
         <ThemeProvider defaultTheme="light">
-          <SessionProvider>
-            <Main className="w-full h-full grid grid-rows-[auto_1fr] bg-background text-foreground">
-              {children}
-            </Main>
-            <Toaster />
-          </SessionProvider>
+          <DataProvider>
+            <SessionProvider>
+              <Main className="w-full h-full grid grid-rows-[auto_1fr] bg-background text-foreground">
+                {children}
+              </Main>
+              <Toaster />
+            </SessionProvider>
+          </DataProvider>
         </ThemeProvider>
       </body>
     </html>
