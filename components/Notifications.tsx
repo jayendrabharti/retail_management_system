@@ -26,9 +26,10 @@ export default function Notifications({ className }: { className?: string }) {
         <Button
           variant={"outline"}
           size={"icon"}
-          className={cn("relative rounded-full", className)}
+          className={cn("relative rounded-full group", className)}
         >
-          <BellIcon />
+          <BellIcon className="group-hover:animate-ping" />
+          <BellIcon className="absolute" />
           <Badge
             className={cn(
               "h-5 min-w-5 rounded-full px-1 font-mono tabular-nums absolute bottom-full left-full -translate-x-2/3 translate-y-2/3",

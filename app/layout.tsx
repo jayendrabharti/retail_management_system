@@ -4,7 +4,6 @@ import { cn } from "@/lib/utils";
 import Main from "@/components/Main";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/providers/ThemeProvider";
-import { DataProvider } from "@/providers/DataProvider";
 import { SessionProvider } from "@/providers/SessionProvider";
 
 export const metadata: Metadata = {
@@ -21,14 +20,12 @@ export default function RootLayout({
     <html suppressHydrationWarning lang="en">
       <body className={cn("h-dvh w-full")}>
         <ThemeProvider defaultTheme="light">
-          <DataProvider>
-            <SessionProvider>
-              <Main className="w-full h-full grid grid-rows-[auto_1fr] bg-background text-foreground">
-                {children}
-              </Main>
-              <Toaster />
-            </SessionProvider>
-          </DataProvider>
+          <SessionProvider>
+            <Main className="w-full h-full grid grid-rows-[auto_1fr] bg-background text-foreground">
+              {children}
+            </Main>
+            <Toaster />
+          </SessionProvider>
         </ThemeProvider>
       </body>
     </html>

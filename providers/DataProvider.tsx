@@ -29,7 +29,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
 
   if (loading) {
     return (
-      <div className="w-full h-full flex justify-center items-center">
+      <div className="w-full h-dvh flex justify-center items-center">
         <LoaderCircleIcon className="animate-spin size-20" />
       </div>
     );
