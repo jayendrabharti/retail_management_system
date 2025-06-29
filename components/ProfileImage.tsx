@@ -126,8 +126,8 @@ export default function ProfileImage({ user }: { user?: User | null }) {
                 ref={imgRef}
                 src={src}
                 alt="profile-image-cropper"
-                width={300}
-                height={300}
+                width={1000}
+                height={1000}
                 onLoad={onImageLoad}
                 style={{ maxWidth: "100%" }}
               />

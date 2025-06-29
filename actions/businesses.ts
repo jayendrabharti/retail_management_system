@@ -166,5 +166,5 @@ export const getCurrentBusinessId = async () => {
 
 export const removeCurrentBusinessId = async () => {
   const cookieStore = await cookies();
-  return cookieStore.delete("current_business_id");
+  cookieStore.delete("current_business_id");
 };

@@ -1,6 +1,6 @@
 import { createSupabaseClient } from "./client";
 import { v4 as uuidv4 } from "uuid";
-import imageCompression from "browser-image-compression";
+// import imageCompression from "browser-image-compression";
 
 function getStorage() {
   const { storage } = createSupabaseClient();
@@ -17,14 +17,14 @@ export const uploadImage = async ({ file, bucket, folder }: UploadProps) => {
   const fileExtension = fileName.slice(fileName.lastIndexOf(".") + 1);
   const path = `${folder ? folder + "/" : ""}${uuidv4()}.${fileExtension}`;
 
-  try {
-    file = await imageCompression(file, {
-      maxSizeMB: 1,
-    });
-  } catch (error) {
-    console.error(error);
-    return { imageUrl: "", error: "Image compression failed" };
-  }
+  // try {
+  //   file = await imageCompression(file, {
+  //     maxSizeMB: 1,
+  //   });
+  // } catch (error) {
+  //   console.error(error);
+  //   return { imageUrl: "", error: "Image compression failed" };
+  // }
 
   const storage = getStorage();
 

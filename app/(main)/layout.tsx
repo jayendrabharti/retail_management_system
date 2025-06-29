@@ -20,7 +20,7 @@ export default async function MainLayout({
           <Navbar />
           <div className="flex flex-col flex-1">
             <Header />
-            <div className="flex-1 overflow-y-scroll w-full p-2">
+            <div className="flex-1 overflow-y-scroll w-full p-3">
               {children}
             </div>
           </div>

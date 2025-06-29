@@ -72,7 +72,6 @@ export function BusinessProvider({
   const switchBusinessId = async ({ id }: { id: string }) => {
     await setCurrentBusinessId({ id: id });
     setBusinessId(id);
-    setBusinessId(id);
     router.refresh();
   };
 

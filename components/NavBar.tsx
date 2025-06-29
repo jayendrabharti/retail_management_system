@@ -57,7 +57,7 @@ export default function Navbar() {
   const { expanded } = useData();
 
   return (
-    <div
+    <nav
       className={cn(
         `group flex flex-col
         hover:w-60 w-19 navbar backdrop-blur-lg p-2.5 overflow-hidden
@@ -118,6 +118,6 @@ export default function Navbar() {
           );
         })}
       </div>
-    </div>
+    </nav>
   );
 }

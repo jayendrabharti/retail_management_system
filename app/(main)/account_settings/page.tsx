@@ -19,8 +19,8 @@ export default function AccountSettings() {
 
   if (user)
     return (
-      <div className="flex flex-col items-center justify-center w-full h-full p-4 space-y-4">
-        <Card>
+      <div className="flex flex-col items-center w-full h-full p-4 space-y-4">
+        <Card className="h-max">
           <CardHeader>
             <CardTitle>User Data</CardTitle>
             <CardDescription>You can update users data here.</CardDescription>

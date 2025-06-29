@@ -36,7 +36,11 @@ const UserButton: React.FC<UserButtonProps> = ({ className }) => {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Avatar className="cursor-pointer">
-              <AvatarImage src={user?.user_metadata.image} />
+              <AvatarImage
+                src={
+                  user?.user_metadata.image || `/images/blankProfilePicture.jpg`
+                }
+              />
               <AvatarFallback>{initials}</AvatarFallback>
             </Avatar>
           </DropdownMenuTrigger>
