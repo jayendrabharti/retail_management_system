@@ -49,6 +49,20 @@ enum UserRole {
   ACCOUNTANT
 }
 
+model AuditLog {
+  id        String   @id @default(cuid())
+  tableName String
+  recordId  String
+  action    String   // "CREATE", "UPDATE", "DELETE"
+  oldData   Json?
+  newData   Json?
+  userId    String
+  createdAt DateTime @default(now())
+
+  @@index([tableName, recordId])
+  @@index([userId, createdAt])
+}
+
 // ============================================
 // BUSINESS & MULTI-TENANCY
 // ============================================
@@ -83,11 +97,12 @@ model Business {
   parties         Party[]
   purchases       Purchase[]
   sales           Sale[]
+  returns         Return[]
+  expenses        Expense[]
   inventory       Inventory[]
   accounts        Account[]
   transactions    Transaction[]
   cashbook        CashbookEntry[]
-  expenses        Expense[]
   quotations      Quotation[]
   stockMovements  StockMovement[]
   notifications   Notification[]
@@ -95,6 +110,7 @@ model Business {
   businessLogs    BusinessLog[]
   paymentTerms    PaymentTerm[]
   discountSchemes DiscountScheme[]
+  taxRates       TaxRate[]
 
   @@map("businesses")
 }
@@ -226,12 +242,25 @@ model Product {
   stockMovements StockMovement[]
   quotationItems QuotationItem[]
   priceHistory   PriceHistory[]
+  productBatch   ProductBatch[]
+  returnItems    ReturnItem[]
 
-  @@index([businessId, isActive])
-  @@index([categoryId])
-  @@index([sku])
-  @@index([barcode])
+  @@index([businessId, categoryId, isActive])
+  @@index([businessId, name])
   @@map("products")
+}
+
+model ProductBatch {
+  id           String   @id @default(cuid())
+  batchNumber  String
+  expiryDate   DateTime?
+  quantity     Int
+  costPrice    Decimal
+
+  productId    String
+  product      Product  @relation(fields: [productId], references: [id])
+
+  @@unique([productId, batchNumber])
 }
 
 model Inventory {
@@ -531,6 +560,7 @@ model Sale {
   // Relationships
   items        SaleItem[]
   transactions Transaction[]
+  returns      Return[]
 
   @@index([businessId, saleDate])
   @@index([partyId])
@@ -566,10 +596,17 @@ enum SaleStatus {
 
 enum PaymentMethod {
   CASH
-  CARD
+  CREDIT_CARD
+  DEBIT_CARD
   BANK_TRANSFER
   UPI
+  PAYTM
+  GPAY
+  PHONEPE
   CHEQUE
+  DEMAND_DRAFT
+  NEFT
+  RTGS
   CREDIT
   OTHER
 }
@@ -577,6 +614,16 @@ enum PaymentMethod {
 // ============================================
 // DISCOUNT & PRICING SCHEMES
 // ============================================
+
+model TaxRate {
+  id         String   @id @default(cuid())
+  name       String  // "GST 18%", "CGST 9%"
+  rate       Decimal
+  isActive   Boolean @default(true)
+
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
+}
 
 model DiscountScheme {
   id          String       @id @default(cuid())
@@ -637,6 +684,48 @@ model Expense {
   @@index([category])
   @@map("expenses")
 }
+
+
+// ============================================
+// RETURN MANAGEMENT
+// ============================================
+
+model Return {
+  id           String      @id @default(cuid())
+  returnNumber Int         @default(autoincrement())
+  returnDate   DateTime    @default(now())
+  reason       String
+  status       ReturnStatus
+  totalAmount  Decimal
+
+  saleId     String?
+  sale       Sale?    @relation(fields: [saleId], references: [id])
+
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
+
+  items      ReturnItem[]
+}
+
+enum ReturnStatus {
+  INITIATED
+  APPROVED
+  REJECTED
+  COMPLETED
+}
+
+model ReturnItem {
+  id         String   @id @default(cuid())
+  returnId   String
+  return     Return   @relation(fields: [returnId], references: [id])
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id])
+  quantity   Int
+  unitPrice  Decimal
+  totalPrice Decimal
+}
+
+
 
 // ============================================
 // ACCOUNTING & FINANCIAL MANAGEMENT
@@ -716,9 +805,8 @@ model Transaction {
   expenseId String?
   expense   Expense? @relation(fields: [expenseId], references: [id])
 
-  @@index([businessId, transactionDate])
-  @@index([debitAccountId])
-  @@index([creditAccountId])
+  @@index([businessId, transactionDate, type])
+  @@index([debitAccountId, creditAccountId])
   @@map("transactions")
 }
 
@@ -920,20 +1008,3 @@ model Draft {
   @@map("drafts")
 }
 
-// generator client {
-//   provider = "prisma-client-js"
-// }
-
-// datasource db {
-//   provider  = "postgresql"
-//   url       = env("DATABASE_URL")
-//   directUrl = env("DIRECT_URL")
-// }
-
-// model Businesses {
-//   id        String   @id @unique @default(uuid())
-//   name      String
-//   userId    String
-//   createdAt DateTime @default(now())
-//   updatedAt DateTime @updatedAt
-// }
