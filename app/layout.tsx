@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { cn } from "@/lib/utils";
-import Main from "@/components/Main";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/providers/ThemeProvider";
 import { SessionProvider } from "@/providers/SessionProvider";
@@ -21,9 +20,7 @@ export default function RootLayout({
       <body className={cn("h-dvh w-full")}>
         <ThemeProvider>
           <SessionProvider>
-            <Main className="w-full h-full grid grid-rows-[auto_1fr] bg-background text-foreground overflow-y-auto relative">
-              {children}
-            </Main>
+            {children}
             <Toaster />
           </SessionProvider>
         </ThemeProvider>
