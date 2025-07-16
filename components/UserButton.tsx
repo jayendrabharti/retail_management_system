@@ -47,7 +47,7 @@ const UserButton: React.FC<UserButtonProps> = ({ className }) => {
           <DropdownMenuContent align="end">
             <div className="px-3 py-2">
               {user?.user_metadata.full_name && (
-                <span className="block font-medium text-sm text-gray-900 dark:text-gray-100">
+                <span className="block text-sm font-medium text-gray-900 dark:text-gray-100">
                   {user?.user_metadata.full_name}
                 </span>
               )}
@@ -67,14 +67,14 @@ const UserButton: React.FC<UserButtonProps> = ({ className }) => {
               <Link href="/account_settings" prefetch={true}>
                 <Button
                   variant={"outline"}
-                  className="mx-auto w-full flex items-center justify-start"
+                  className="mx-auto flex w-full items-center justify-start"
                 >
                   <UserRoundCogIcon />
                   Account Settings
                 </Button>
               </Link>
 
-              <SignOutButton className="mx-auto w-full flex items-center justify-start" />
+              <SignOutButton className="mx-auto flex w-full items-center justify-start" />
             </div>
           </DropdownMenuContent>
         </DropdownMenu>

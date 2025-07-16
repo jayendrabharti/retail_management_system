@@ -5,7 +5,7 @@ import {
   setCurrentBusinessId,
   updateBusinessAction,
 } from "@/actions/businesses";
-import { Businesses } from "@prisma/client";
+import { Business } from "@prisma/client";
 import { useRouter } from "next/navigation";
 import {
   createContext,
@@ -20,7 +20,7 @@ import { toast } from "sonner";
 type BusinessContextType = {
   businessId: string;
   switchBusinessId: (args: { id: string }) => Promise<void>;
-  businesses: Businesses[];
+  businesses: Business[];
   deleteBusiness: (args: { id: string }) => Promise<void>;
   updateBusiness: (args: { id: string; name: string }) => Promise<void>;
 };
@@ -41,7 +41,7 @@ export function BusinessProvider({
   currentBusinessId: string;
 }>) {
   const [businessId, setBusinessId] = useState<string>(currentBusinessId);
-  const [businesses, setBusinesses] = useState<Businesses[]>([]);
+  const [businesses, setBusinesses] = useState<Business[]>([]);
   const router = useRouter();
   const { user } = useSession();
 
@@ -110,7 +110,7 @@ export function BusinessProvider({
           return { ...b, name: name };
         }
         return b;
-      })
+      }),
     );
   };
 
@@ -133,7 +133,7 @@ export function useCurrentBusiness() {
   const context = useContext(BusinessContext);
   if (!context) {
     throw new Error(
-      "useCurrentBusiness must be used within a BusinessProvider"
+      "useCurrentBusiness must be used within a BusinessProvider",
     );
   }
   return context;

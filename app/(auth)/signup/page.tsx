@@ -61,13 +61,13 @@ export default function SignUpPage() {
 
   if (optSent)
     return (
-      <div className="flex flex-col space-y-4 bg-background p-5 rounded-lg border border-border m-2 w-max">
-        <h2 className="text-2xl font-bold mb-4 mx-auto">Verify Phone Number</h2>
-        <span className="mx-auto text-muted-foreground">
+      <div className="bg-background border-border m-2 flex w-max flex-col space-y-4 rounded-lg border p-5">
+        <h2 className="mx-auto mb-4 text-2xl font-bold">Verify Phone Number</h2>
+        <span className="text-muted-foreground mx-auto">
           OTP has been sent to {verificationInfo.phone}
         </span>
 
-        <div className="w-max mx-auto">
+        <div className="mx-auto w-max">
           <InputOTP
             value={otp}
             onChange={(otp) => setOtp(otp)}

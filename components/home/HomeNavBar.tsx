@@ -7,6 +7,7 @@ import { useSession } from "@/providers/SessionProvider";
 import { Button } from "../ui/button";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { LogInIcon } from "lucide-react";
 
 interface NavItem {
   title: string;
@@ -62,8 +63,9 @@ export default function HomeNavbar() {
               <Link
                 key={index}
                 href={link.href}
+                prefetch={true}
                 className={cn(
-                  "px-3 py-0.5 rounded-full",
+                  "px-3 py-1 rounded-full",
                   "active:scale-95",
                   "transition-all duration-200",
                   active
@@ -79,8 +81,14 @@ export default function HomeNavbar() {
           {user ? (
             <UserButton />
           ) : (
-            <Link href={"/login"}>
-              <Button variant={"secondary"}>Log In</Button>
+            <Link href={"/login"} prefetch={true}>
+              <Button
+                variant={"secondary"}
+                className="rounded-full border border-border"
+              >
+                Log In
+                <LogInIcon />
+              </Button>
             </Link>
           )}
 

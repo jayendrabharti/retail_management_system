@@ -5,6 +5,7 @@ import { getErrorMessage } from "@/utils/utils";
 import { SignUpFormData } from "@/types/auth";
 import nodemailer from "nodemailer";
 import { createSupabaseAdminClient } from "@/supabase/admin";
+import prisma from "@/prisma/client";
 type LogInData = { email: string } | { phone: string };
 
 export const signUpAction = async (formData: SignUpFormData) => {
@@ -45,6 +46,36 @@ export const verifyPhoneOtpAction = async (formData: {
       token: formData.otp,
       type: "sms",
     });
+
+    if (data.user?.id) {
+      const userExists = await prisma.user.count({
+        where: {
+          userId: data.user.id,
+        },
+      });
+      if (!userExists) {
+        await prisma.user.create({
+          data: {
+            userId: data.user.id,
+            phone: formData.phone,
+            fullName: data.user.user_metadata?.full_name || "",
+            role: "BUSINESS_OWNER",
+            lastLogIn: new Date(),
+          },
+        });
+      } else {
+        await prisma.user.update({
+          where: {
+            userId: data.user.id,
+          },
+          data: {
+            lastLogIn: new Date(),
+          },
+        });
+      }
+    } else {
+      throw new Error("User not found or not created");
+    }
 
     if (error) throw error;
 

@@ -14,7 +14,6 @@ export default function SignOutButton({
   className?: string;
 }) {
   const router = useRouter();
-  router.prefetch("/login");
   const [signingOut, startSignOut] = useTransition();
   const supabase = createSupabaseClient();
 
@@ -26,8 +25,8 @@ export default function SignOutButton({
           if (error) {
             toast.error(getErrorMessage(error));
           } else {
-            toast.success("Signed out !!");
             router.push("/login");
+            toast.success("Signed out !!");
             await supabase.auth.refreshSession();
           }
         });

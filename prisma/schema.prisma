@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ============================================
@@ -29,8 +30,7 @@ model User {
   isPremium          Boolean    @default(false)
   premiumTier        String?
   premiumExpiresAt   DateTime?
-  signIns            DateTime[]
-  signOuts           DateTime[]
+  lastLogIn         DateTime?
   createdAt          DateTime   @default(now())
   updatedAt          DateTime   @updatedAt
 
@@ -53,7 +53,7 @@ model AuditLog {
   id        String   @id @default(cuid())
   tableName String
   recordId  String
-  action    String   // "CREATE", "UPDATE", "DELETE"
+  action    String // "CREATE", "UPDATE", "DELETE"
   oldData   Json?
   newData   Json?
   userId    String
@@ -110,7 +110,7 @@ model Business {
   businessLogs    BusinessLog[]
   paymentTerms    PaymentTerm[]
   discountSchemes DiscountScheme[]
-  taxRates       TaxRate[]
+  taxRates        TaxRate[]
 
   @@map("businesses")
 }
@@ -251,14 +251,14 @@ model Product {
 }
 
 model ProductBatch {
-  id           String   @id @default(cuid())
-  batchNumber  String
-  expiryDate   DateTime?
-  quantity     Int
-  costPrice    Decimal
+  id          String    @id @default(cuid())
+  batchNumber String
+  expiryDate  DateTime?
+  quantity    Int
+  costPrice   Decimal
 
-  productId    String
-  product      Product  @relation(fields: [productId], references: [id])
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
 
   @@unique([productId, batchNumber])
 }
@@ -616,10 +616,10 @@ enum PaymentMethod {
 // ============================================
 
 model TaxRate {
-  id         String   @id @default(cuid())
-  name       String  // "GST 18%", "CGST 9%"
-  rate       Decimal
-  isActive   Boolean @default(true)
+  id       String  @id @default(cuid())
+  name     String // "GST 18%", "CGST 9%"
+  rate     Decimal
+  isActive Boolean @default(true)
 
   businessId String
   business   Business @relation(fields: [businessId], references: [id])
@@ -685,26 +685,25 @@ model Expense {
   @@map("expenses")
 }
 
-
 // ============================================
 // RETURN MANAGEMENT
 // ============================================
 
 model Return {
-  id           String      @id @default(cuid())
-  returnNumber Int         @default(autoincrement())
-  returnDate   DateTime    @default(now())
+  id           String       @id @default(cuid())
+  returnNumber Int          @default(autoincrement())
+  returnDate   DateTime     @default(now())
   reason       String
   status       ReturnStatus
   totalAmount  Decimal
 
-  saleId     String?
-  sale       Sale?    @relation(fields: [saleId], references: [id])
+  saleId String?
+  sale   Sale?   @relation(fields: [saleId], references: [id])
 
   businessId String
   business   Business @relation(fields: [businessId], references: [id])
 
-  items      ReturnItem[]
+  items ReturnItem[]
 }
 
 enum ReturnStatus {
@@ -715,17 +714,15 @@ enum ReturnStatus {
 }
 
 model ReturnItem {
-  id         String   @id @default(cuid())
+  id         String  @id @default(cuid())
   returnId   String
-  return     Return   @relation(fields: [returnId], references: [id])
+  return     Return  @relation(fields: [returnId], references: [id])
   productId  String
-  product    Product  @relation(fields: [productId], references: [id])
+  product    Product @relation(fields: [productId], references: [id])
   quantity   Int
   unitPrice  Decimal
   totalPrice Decimal
 }
-
-
 
 // ============================================
 // ACCOUNTING & FINANCIAL MANAGEMENT
@@ -1007,4 +1004,3 @@ model Draft {
   @@index([businessId, type])
   @@map("drafts")
 }
-

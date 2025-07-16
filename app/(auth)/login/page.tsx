@@ -58,11 +58,11 @@ export default function LogInPage() {
           return;
         }
       }
+      refreshSession();
+      router.push(`/dashboard`);
       toast.success("Verified!!", {
         style: { background: "#22c55e", color: "#fff" }, // Tailwind green-500
       });
-      refreshSession();
-      router.push(`/dashboard`);
     });
   };
 
