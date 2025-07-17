@@ -4,6 +4,10 @@ import prisma from "@/prisma/client";
 import { Business, AccountType } from "@prisma/client";
 import { createSupabaseClient } from "@/supabase/server";
 import { getErrorMessage } from "@/utils/utils";
+import {
+  safePrismaOperation,
+  safeSupabaseUserOperation,
+} from "@/utils/safe-operations";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 
@@ -35,6 +39,7 @@ interface UpdateBusinessData {
   currency?: string;
   fiscalYear?: string;
   isActive?: boolean;
+  logoImage?: string;
 }
 
 // Standard return type for business operations
@@ -180,61 +185,91 @@ export const getBusinessAction = async (): Promise<BusinessActionResult> => {
 export const createBusinessAction = async (
   data: CreateBusinessData,
 ): Promise<BusinessActionResult> => {
-  try {
-    const supabase = await createSupabaseClient();
-    const {
-      data: { user },
-      error,
-    } = await supabase.auth.getUser();
+  const { data: user, error: authError } = await safeSupabaseUserOperation(
+    async () => {
+      const supabase = await createSupabaseClient();
+      return await supabase.auth.getUser();
+    },
+  );
 
-    if (error) throw error;
-    if (!user?.id) throw new Error("User not authenticated");
+  if (authError || !user) {
+    return { data: null, errorMessage: authError || "User not authenticated" };
+  }
 
-    // Get or create user in our database
-    let dbUser = await prisma.user.findUnique({
-      where: { userId: user.id },
-    });
+  if (!user.id) {
+    return { data: null, errorMessage: "User ID not found" };
+  }
 
-    if (!dbUser) {
-      // Create user if doesn't exist
-      dbUser = await prisma.user.create({
-        data: {
-          userId: user.id,
-          phone: user.phone || "",
-          email: user.email,
-          fullName: user.user_metadata?.full_name || "",
-          role: "BUSINESS_OWNER",
-        },
+  // Get or create user in our database
+  const { data: dbUser, error: userError } = await safePrismaOperation(
+    async () => {
+      let existingUser = await prisma.user.findUnique({
+        where: { userId: user.id },
       });
-    }
 
-    // Create business
-    const business = await prisma.business.create({
-      data: {
-        name: data.name,
-        description: data.description,
-        email: data.email,
-        phone: data.phone,
-        gstNumber: data.gstNumber,
-        registrationNo: data.registrationNo,
-        panNumber: data.panNumber,
-        website: data.website,
-        currency: data.currency || "INR",
-        fiscalYear: data.fiscalYear || "april-march",
-        ownerId: dbUser.id,
-      },
-      include: {
-        owner: {
-          select: {
-            fullName: true,
-            email: true,
+      if (!existingUser) {
+        // Create user if doesn't exist
+        existingUser = await prisma.user.create({
+          data: {
+            userId: user.id,
+            phone: user.phone || "",
+            email: user.email,
+            fullName: user.user_metadata?.full_name || "",
+            role: "BUSINESS_OWNER",
+          },
+        });
+      }
+
+      return existingUser;
+    },
+  );
+
+  if (userError || !dbUser) {
+    return {
+      data: null,
+      errorMessage: userError || "Failed to get or create user",
+    };
+  }
+
+  // Create business
+  const { data: business, error: businessError } = await safePrismaOperation(
+    async () => {
+      return await prisma.business.create({
+        data: {
+          name: data.name,
+          description: data.description,
+          email: data.email,
+          phone: data.phone,
+          gstNumber: data.gstNumber,
+          registrationNo: data.registrationNo,
+          panNumber: data.panNumber,
+          website: data.website,
+          currency: data.currency || "INR",
+          fiscalYear: data.fiscalYear || "april-march",
+          ownerId: dbUser.id,
+        },
+        include: {
+          owner: {
+            select: {
+              fullName: true,
+              email: true,
+            },
           },
         },
-      },
-    });
+      });
+    },
+  );
 
-    // Create default business user entry
-    await prisma.businessUser.create({
+  if (businessError || !business) {
+    return {
+      data: null,
+      errorMessage: businessError || "Failed to create business",
+    };
+  }
+
+  // Create default business user entry
+  const { error: businessUserError } = await safePrismaOperation(async () => {
+    return await prisma.businessUser.create({
       data: {
         businessId: business.id,
         userId: dbUser.id,
@@ -242,18 +277,28 @@ export const createBusinessAction = async (
         isActive: true,
       },
     });
+  });
 
-    // Create default accounts for double-entry bookkeeping
-    await createDefaultAccounts(business.id);
-
-    revalidatePath("/");
-    revalidatePath("/businesses");
-
-    return { data: business, errorMessage: null };
-  } catch (error) {
-    console.error("Error creating business:", error);
-    return { data: null, errorMessage: getErrorMessage(error) };
+  if (businessUserError) {
+    console.error(
+      "Warning: Failed to create business user entry:",
+      businessUserError,
+    );
+    // Continue anyway - the business was created successfully
   }
+
+  // Create default accounts for double-entry bookkeeping
+  try {
+    await createDefaultAccounts(business.id);
+  } catch (error) {
+    console.error("Warning: Failed to create default accounts:", error);
+    // Continue anyway - the business was created successfully
+  }
+
+  revalidatePath("/");
+  revalidatePath("/businesses");
+
+  return { data: business, errorMessage: null };
 };
 
 export const updateBusinessAction = async (
@@ -311,6 +356,7 @@ export const updateBusinessAction = async (
         ...(data.currency !== undefined && { currency: data.currency }),
         ...(data.fiscalYear !== undefined && { fiscalYear: data.fiscalYear }),
         ...(data.isActive !== undefined && { isActive: data.isActive }),
+        ...(data.logoImage !== undefined && { logoImage: data.logoImage }),
         updatedAt: new Date(),
       },
       include: {

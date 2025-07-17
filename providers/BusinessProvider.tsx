@@ -1,7 +1,9 @@
 "use client";
 import {
+  createBusinessAction,
   deleteBusinessAction,
   getBusinessesAction,
+  getCurrentBusinessId,
   setCurrentBusinessId,
   updateBusinessAction,
 } from "@/actions/businesses";
@@ -14,11 +16,12 @@ import {
   useEffect,
   useState,
 } from "react";
-import { useSession } from "./SessionProvider";
 import { toast } from "sonner";
+import Loading from "@/app/loading";
+import { set } from "react-hook-form";
 
 type BusinessContextType = {
-  businessId: string;
+  businessId: string | null;
   switchBusinessId: (args: { id: string }) => Promise<void>;
   businesses: Business[];
   deleteBusiness: (args: { id: string }) => Promise<void>;
@@ -26,7 +29,7 @@ type BusinessContextType = {
 };
 
 const BusinessContext = createContext<BusinessContextType>({
-  businessId: "",
+  businessId: null,
   switchBusinessId: async () => {},
   businesses: [],
   deleteBusiness: async () => {},
@@ -35,39 +38,126 @@ const BusinessContext = createContext<BusinessContextType>({
 
 export function BusinessProvider({
   children,
-  currentBusinessId,
 }: Readonly<{
   children: React.ReactNode;
-  currentBusinessId: string;
 }>) {
-  const [businessId, setBusinessId] = useState<string>(currentBusinessId);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [businessId, setBusinessId] = useState<string | null>(null);
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const router = useRouter();
-  const { user } = useSession();
 
   useEffect(() => {
     const getBusinesses = async () => {
-      const data = await getBusinessesAction();
-      if (!data) return;
+      try {
+        // Add timeout protection for the entire operation
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(
+            () => reject(new Error("Business initialization timeout")),
+            20000,
+          ),
+        );
 
-      const businesses = data.data;
-      const userBusinesses = businesses?.map((b) => {
-        if (user?.id) {
-          return {
-            ...b,
-            owner: "(You)",
-          };
-        } else {
-          return {
-            ...b,
-            owner: "(unknown)",
-          };
-        }
-      });
-      setBusinesses(userBusinesses ?? []);
+        const operationPromise = async () => {
+          // get businessId saved in cookies
+          const currentBusinessId = await getCurrentBusinessId();
+
+          // get all businesses for current user
+          const { data: businesses, errorMessage: businessesError } =
+            await getBusinessesAction();
+
+          if (businessesError) {
+            console.error("Error fetching businesses:", businessesError);
+            toast.error(`Failed to load businesses: ${businessesError}`);
+            setLoading(false);
+            return;
+          }
+
+          if (!businesses) {
+            console.error("No businesses data received");
+            toast.error("Failed to load business data");
+            setLoading(false);
+            return;
+          }
+
+          setBusinesses(businesses);
+
+          if (businesses.length === 0) {
+            const { data: newBusiness, errorMessage } =
+              await createBusinessAction({
+                name: "My Business",
+              });
+
+            if (errorMessage) {
+              console.error("Error creating business:", errorMessage);
+              toast.error(`Failed to create business: ${errorMessage}`);
+              setLoading(false);
+              return;
+            }
+
+            if (!newBusiness) {
+              console.error("No business data returned from create action");
+              toast.error("Failed to create business");
+              setLoading(false);
+              return;
+            }
+
+            setBusinesses([newBusiness]);
+            setBusinessId(newBusiness.id);
+
+            try {
+              await setCurrentBusinessId({ id: newBusiness.id });
+            } catch (error) {
+              console.error("Error setting current business ID:", error);
+              // Continue anyway - the business was created successfully
+            }
+          } else {
+            if (currentBusinessId) {
+              const validBusinessId = businesses.some(
+                (b) => b.id === currentBusinessId,
+              );
+              if (validBusinessId) {
+                setBusinessId(currentBusinessId);
+              } else {
+                // Current business ID is invalid, switch to first available
+                setBusinessId(businesses[0]?.id);
+                try {
+                  await setCurrentBusinessId({ id: businesses[0]?.id });
+                } catch (error) {
+                  console.error("Error setting current business ID:", error);
+                }
+              }
+            } else {
+              setBusinessId(businesses[0]?.id);
+              try {
+                await setCurrentBusinessId({ id: businesses[0]?.id });
+              } catch (error) {
+                console.error("Error setting current business ID:", error);
+              }
+            }
+          }
+
+          // stop loading and render business pages
+          setLoading(false);
+        };
+
+        await Promise.race([operationPromise(), timeoutPromise]);
+      } catch (error) {
+        console.error("Error in BusinessProvider initialization:", error);
+
+        const errorMessage =
+          error instanceof Error
+            ? error.message.includes("timeout")
+              ? "Business initialization timed out. Please refresh the page."
+              : error.message
+            : "Failed to initialize business data";
+
+        toast.error(errorMessage);
+        setLoading(false);
+      }
     };
+
     getBusinesses();
-  }, [businessId, user]);
+  }, []);
 
   const switchBusinessId = async ({ id }: { id: string }) => {
     await setCurrentBusinessId({ id: id });
@@ -113,6 +203,8 @@ export function BusinessProvider({
       }),
     );
   };
+
+  if (loading) return <Loading />;
 
   return (
     <BusinessContext.Provider

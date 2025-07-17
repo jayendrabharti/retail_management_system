@@ -1,6 +1,5 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { getCurrentBusinessId } from "./actions/businesses";
 
 export async function middleware(request: NextRequest) {
   const path = new URL(request.url).pathname;
@@ -16,7 +15,7 @@ export async function middleware(request: NextRequest) {
   const authRoutes = ["/login", "/signup"];
 
   const isProtectedRoute = protectedRoutes.some(
-    (route) => path === route || path.startsWith(`${route}/`)
+    (route) => path === route || path.startsWith(`${route}/`),
   );
   const isAuthRoute = authRoutes.includes(path);
 
@@ -25,17 +24,8 @@ export async function middleware(request: NextRequest) {
   if (isProtectedRoute || isAuthRoute) {
     const user = await getUser(request, response);
 
-    if (isProtectedRoute) {
-      if (!user) {
-        return NextResponse.rewrite(new URL("/unauthorized", request.url));
-      } else {
-        const businessId = await getCurrentBusinessId();
-        if (!businessId) {
-          return NextResponse.redirect(
-            new URL(`/api/init_business?path=${path}`, request.url)
-          );
-        }
-      }
+    if (isProtectedRoute && !user) {
+      return NextResponse.rewrite(new URL("/unauthorized", request.url));
     }
 
     if (isAuthRoute && user) {
@@ -76,7 +66,7 @@ async function getUser(request: NextRequest, response: NextResponse) {
           });
         },
       },
-    }
+    },
   );
 
   const { data } = await supabaseClient.auth.getUser();
