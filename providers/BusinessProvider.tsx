@@ -18,7 +18,17 @@ import {
 } from "react";
 import { toast } from "sonner";
 import Loading from "@/app/loading";
-import { set } from "react-hook-form";
+
+/**
+ * Business Provider - Manages multi-tenant business context
+ *
+ * Features:
+ * - Handles business switching for multi-tenant architecture
+ * - Manages current business state across the application
+ * - Provides CRUD operations for businesses
+ * - Auto-creates default business for new users
+ * - Stores current business ID in secure HTTP-only cookies
+ */
 
 type BusinessContextType = {
   businessId: string | null;
@@ -49,7 +59,7 @@ export function BusinessProvider({
   useEffect(() => {
     const getBusinesses = async () => {
       try {
-        // Add timeout protection for the entire operation
+        // Timeout protection to prevent hanging on business initialization
         const timeoutPromise = new Promise<never>((_, reject) =>
           setTimeout(
             () => reject(new Error("Business initialization timeout")),
@@ -58,10 +68,10 @@ export function BusinessProvider({
         );
 
         const operationPromise = async () => {
-          // get businessId saved in cookies
+          // Get current business ID from secure cookies
           const currentBusinessId = await getCurrentBusinessId();
 
-          // get all businesses for current user
+          // Fetch all businesses owned by the current user
           const { data: businesses, errorMessage: businessesError } =
             await getBusinessesAction();
 
@@ -81,6 +91,7 @@ export function BusinessProvider({
 
           setBusinesses(businesses);
 
+          // Auto-create default business for new users
           if (businesses.length === 0) {
             const { data: newBusiness, errorMessage } =
               await createBusinessAction({
@@ -104,6 +115,7 @@ export function BusinessProvider({
             setBusinesses([newBusiness]);
             setBusinessId(newBusiness.id);
 
+            // Set the new business as current in cookies
             try {
               await setCurrentBusinessId({ id: newBusiness.id });
             } catch (error) {
@@ -111,6 +123,7 @@ export function BusinessProvider({
               // Continue anyway - the business was created successfully
             }
           } else {
+            // Validate and set existing business
             if (currentBusinessId) {
               const validBusinessId = businesses.some(
                 (b) => b.id === currentBusinessId,
@@ -136,7 +149,6 @@ export function BusinessProvider({
             }
           }
 
-          // stop loading and render business pages
           setLoading(false);
         };
 

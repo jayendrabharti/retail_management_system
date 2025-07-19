@@ -10,6 +10,8 @@ import {
 import { getCurrentBusinessId } from "./businesses";
 import { getErrorMessage } from "@/utils/utils";
 import { revalidatePath } from "next/cache";
+import { createSupabaseClient } from "@/supabase/server";
+import { Decimal } from "@prisma/client/runtime/library";
 
 // Types
 interface CreateAccountData {
@@ -77,6 +79,36 @@ export const getAccountsAction = async (): Promise<AccountsResult> => {
       throw new Error("No business selected");
     }
 
+    // Authentication and authorization
+    const supabase = await createSupabaseClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user?.id) throw new Error("User not authenticated");
+
+    const dbUser = await prisma.user.findUnique({
+      where: { userId: user.id },
+    });
+
+    if (!dbUser) {
+      throw new Error("User not found in database");
+    }
+
+    // Verify business access
+    const businessAccess = await prisma.business.findFirst({
+      where: {
+        id: businessId,
+        OR: [
+          { ownerId: dbUser.id },
+          { users: { some: { userId: dbUser.id, isActive: true } } },
+        ],
+      },
+    });
+
+    if (!businessAccess) {
+      throw new Error("Access denied to business");
+    }
+
     const accounts = await prisma.account.findMany({
       where: {
         businessId,
@@ -94,6 +126,7 @@ export const getAccountsAction = async (): Promise<AccountsResult> => {
       errorMessage: null,
     };
   } catch (error) {
+    console.error("Error fetching accounts:", error);
     return {
       data: null,
       errorMessage: getErrorMessage(error),
@@ -111,11 +144,121 @@ export const createAccountAction = async (
       throw new Error("No business selected");
     }
 
+    // Authentication and authorization
+    const supabase = await createSupabaseClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user?.id) throw new Error("User not authenticated");
+
+    const dbUser = await prisma.user.findUnique({
+      where: { userId: user.id },
+    });
+
+    if (!dbUser) {
+      throw new Error("User not found in database");
+    }
+
+    // Verify business access
+    const businessAccess = await prisma.business.findFirst({
+      where: {
+        id: businessId,
+        OR: [
+          { ownerId: dbUser.id },
+          { users: { some: { userId: dbUser.id, isActive: true } } },
+        ],
+      },
+    });
+
+    if (!businessAccess) {
+      throw new Error("Access denied to business");
+    }
+
+    // Input validation
+    if (
+      !accountData.name ||
+      typeof accountData.name !== "string" ||
+      accountData.name.trim().length === 0
+    ) {
+      throw new Error("Account name is required");
+    }
+
+    if (accountData.name.trim().length > 100) {
+      throw new Error("Account name is too long (max 100 characters)");
+    }
+
+    if (
+      !accountData.accountType ||
+      !Object.values(AccountType).includes(accountData.accountType)
+    ) {
+      throw new Error("Valid account type is required");
+    }
+
+    if (
+      accountData.accountNumber &&
+      accountData.accountNumber.trim().length > 50
+    ) {
+      throw new Error("Account number is too long (max 50 characters)");
+    }
+
+    if (
+      accountData.description &&
+      accountData.description.trim().length > 500
+    ) {
+      throw new Error("Description is too long (max 500 characters)");
+    }
+
+    if (
+      accountData.balance &&
+      (typeof accountData.balance !== "number" || isNaN(accountData.balance))
+    ) {
+      throw new Error("Balance must be a valid number");
+    }
+
+    if (
+      accountData.balance &&
+      (accountData.balance < -999999999 || accountData.balance > 999999999)
+    ) {
+      throw new Error("Balance amount is too large");
+    }
+
+    // Check if account name already exists for this business
+    const existingAccount = await prisma.account.findFirst({
+      where: {
+        businessId,
+        name: accountData.name.trim(),
+        isActive: true,
+      },
+    });
+
+    if (existingAccount) {
+      throw new Error("Account with this name already exists");
+    }
+
+    // Verify parent account exists if provided
+    if (accountData.parentId) {
+      const parentAccount = await prisma.account.findFirst({
+        where: {
+          id: accountData.parentId,
+          businessId,
+          isActive: true,
+        },
+      });
+
+      if (!parentAccount) {
+        throw new Error("Parent account not found");
+      }
+    }
+
     const account = await prisma.account.create({
       data: {
-        ...accountData,
+        name: accountData.name.trim(),
+        accountNumber: accountData.accountNumber?.trim() || null,
+        accountType: accountData.accountType,
+        parentId: accountData.parentId || null,
+        description: accountData.description?.trim() || null,
+        balance: new Decimal(accountData.balance || 0),
         businessId,
-        balance: accountData.balance || 0,
       },
       include: {
         parent: true,
@@ -129,6 +272,7 @@ export const createAccountAction = async (
       errorMessage: null,
     };
   } catch (error) {
+    console.error("Error creating account:", error);
     return {
       data: null,
       errorMessage: getErrorMessage(error),
@@ -371,11 +515,198 @@ export const createTransactionAction = async (
       throw new Error("No business selected");
     }
 
+    // Authentication and authorization
+    const supabase = await createSupabaseClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user?.id) throw new Error("User not authenticated");
+
+    const dbUser = await prisma.user.findUnique({
+      where: { userId: user.id },
+    });
+
+    if (!dbUser) {
+      throw new Error("User not found in database");
+    }
+
+    // Verify business access
+    const businessAccess = await prisma.business.findFirst({
+      where: {
+        id: businessId,
+        OR: [
+          { ownerId: dbUser.id },
+          { users: { some: { userId: dbUser.id, isActive: true } } },
+        ],
+      },
+    });
+
+    if (!businessAccess) {
+      throw new Error("Access denied to business");
+    }
+
+    // Input validation
+    if (
+      !transactionData.description ||
+      typeof transactionData.description !== "string" ||
+      transactionData.description.trim().length === 0
+    ) {
+      throw new Error("Transaction description is required");
+    }
+
+    if (transactionData.description.trim().length > 500) {
+      throw new Error("Description is too long (max 500 characters)");
+    }
+
+    if (
+      !transactionData.amount ||
+      typeof transactionData.amount !== "number" ||
+      isNaN(transactionData.amount)
+    ) {
+      throw new Error("Transaction amount must be a valid number");
+    }
+
+    if (transactionData.amount <= 0) {
+      throw new Error("Transaction amount must be greater than 0");
+    }
+
+    if (transactionData.amount > 999999999) {
+      throw new Error("Transaction amount is too large");
+    }
+
+    if (
+      !transactionData.type ||
+      !Object.values(TransactionType).includes(transactionData.type)
+    ) {
+      throw new Error("Valid transaction type is required");
+    }
+
+    if (
+      !transactionData.debitAccountId ||
+      typeof transactionData.debitAccountId !== "string" ||
+      transactionData.debitAccountId.trim().length === 0
+    ) {
+      throw new Error("Debit account is required");
+    }
+
+    if (
+      !transactionData.creditAccountId ||
+      typeof transactionData.creditAccountId !== "string" ||
+      transactionData.creditAccountId.trim().length === 0
+    ) {
+      throw new Error("Credit account is required");
+    }
+
+    if (transactionData.debitAccountId === transactionData.creditAccountId) {
+      throw new Error("Debit and credit accounts cannot be the same");
+    }
+
+    if (
+      transactionData.reference &&
+      transactionData.reference.trim().length > 100
+    ) {
+      throw new Error("Reference is too long (max 100 characters)");
+    }
+
+    if (transactionData.notes && transactionData.notes.trim().length > 1000) {
+      throw new Error("Notes are too long (max 1000 characters)");
+    }
+
     const result = await prisma.$transaction(async (tx) => {
+      // Verify both accounts exist and belong to the business
+      const [debitAccount, creditAccount] = await Promise.all([
+        tx.account.findFirst({
+          where: {
+            id: transactionData.debitAccountId.trim(),
+            businessId,
+            isActive: true,
+          },
+        }),
+        tx.account.findFirst({
+          where: {
+            id: transactionData.creditAccountId.trim(),
+            businessId,
+            isActive: true,
+          },
+        }),
+      ]);
+
+      if (!debitAccount) {
+        throw new Error("Debit account not found or inactive");
+      }
+
+      if (!creditAccount) {
+        throw new Error("Credit account not found or inactive");
+      }
+
+      // Verify referenced entities if provided
+      if (transactionData.partyId) {
+        const party = await tx.party.findFirst({
+          where: {
+            id: transactionData.partyId,
+            businessId,
+            isActive: true,
+          },
+        });
+
+        if (!party) {
+          throw new Error("Referenced party not found");
+        }
+      }
+
+      if (transactionData.saleId) {
+        const sale = await tx.sale.findFirst({
+          where: {
+            id: transactionData.saleId,
+            businessId,
+          },
+        });
+
+        if (!sale) {
+          throw new Error("Referenced sale not found");
+        }
+      }
+
+      if (transactionData.purchaseId) {
+        const purchase = await tx.purchase.findFirst({
+          where: {
+            id: transactionData.purchaseId,
+            businessId,
+          },
+        });
+
+        if (!purchase) {
+          throw new Error("Referenced purchase not found");
+        }
+      }
+
+      if (transactionData.expenseId) {
+        const expense = await tx.expense.findFirst({
+          where: {
+            id: transactionData.expenseId,
+            businessId,
+          },
+        });
+
+        if (!expense) {
+          throw new Error("Referenced expense not found");
+        }
+      }
+
       // Create transaction
       const transaction = await tx.transaction.create({
         data: {
-          ...transactionData,
+          description: transactionData.description.trim(),
+          amount: new Decimal(transactionData.amount),
+          type: transactionData.type,
+          debitAccountId: transactionData.debitAccountId.trim(),
+          creditAccountId: transactionData.creditAccountId.trim(),
+          reference: transactionData.reference?.trim() || null,
+          notes: transactionData.notes?.trim() || null,
+          purchaseId: transactionData.purchaseId || null,
+          saleId: transactionData.saleId || null,
+          partyId: transactionData.partyId || null,
+          expenseId: transactionData.expenseId || null,
           businessId,
         },
         include: {
@@ -384,24 +715,25 @@ export const createTransactionAction = async (
         },
       });
 
-      // Update account balances
-      await tx.account.update({
-        where: { id: transactionData.debitAccountId },
-        data: {
-          balance: {
-            increment: transactionData.amount,
+      // Update account balances atomically
+      await Promise.all([
+        tx.account.update({
+          where: { id: transactionData.debitAccountId.trim() },
+          data: {
+            balance: {
+              increment: transactionData.amount,
+            },
           },
-        },
-      });
-
-      await tx.account.update({
-        where: { id: transactionData.creditAccountId },
-        data: {
-          balance: {
-            decrement: transactionData.amount,
+        }),
+        tx.account.update({
+          where: { id: transactionData.creditAccountId.trim() },
+          data: {
+            balance: {
+              decrement: transactionData.amount,
+            },
           },
-        },
-      });
+        }),
+      ]);
 
       return transaction;
     });
@@ -412,6 +744,7 @@ export const createTransactionAction = async (
       errorMessage: null,
     };
   } catch (error) {
+    console.error("Error creating transaction:", error);
     return {
       data: null,
       errorMessage: getErrorMessage(error),

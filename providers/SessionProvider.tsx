@@ -9,11 +9,22 @@ import {
 import { createSupabaseClient } from "@/supabase/client";
 import { Session, User } from "@supabase/supabase-js";
 
+/**
+ * Session Provider - Manages user authentication state across the application
+ *
+ * Features:
+ * - Provides current user and session data
+ * - Handles session refresh functionality
+ * - Listens for auth state changes (login/logout)
+ * - Works with Supabase Auth
+ */
+
 type SessionContextType = {
   user: User | null;
   session: Session | null;
   refreshSession: () => Promise<void>;
 };
+
 const sessionContext = createContext<SessionContextType>({
   user: null,
   session: null,
@@ -47,7 +58,7 @@ export function SessionProvider({
       (_event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
-      }
+      },
     );
 
     return () => {

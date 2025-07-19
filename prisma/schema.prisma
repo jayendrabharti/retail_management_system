@@ -12,9 +12,15 @@ datasource db {
 // USER & AUTHENTICATION MANAGEMENT
 // ============================================
 
+/**
+ * User Model - Core user authentication and profile data
+ * 
+ * Integrates with Supabase Auth for authentication while maintaining
+ * application-specific user data and business relationships.
+ */
 model User {
   id                 String     @id @default(cuid())
-  userId             String     @unique
+  userId             String     @unique // Supabase Auth user ID
   phone              String     @unique
   email              String?    @unique
   fullName           String?
@@ -35,28 +41,34 @@ model User {
   updatedAt          DateTime   @updatedAt
 
   // Relationships
-  businessUsers   BusinessUser[]
-  ownedBusinesses Business[]     @relation("BusinessOwner")
+  businessUsers   BusinessUser[] // Many-to-many with businesses
+  ownedBusinesses Business[]     @relation("BusinessOwner") // Businesses owned by this user
 
   @@map("users")
 }
 
 enum UserRole {
-  SUPER_ADMIN
-  BUSINESS_OWNER
-  MANAGER
-  EMPLOYEE
-  ACCOUNTANT
+  SUPER_ADMIN    // Platform administrator
+  BUSINESS_OWNER // Owner of a business
+  MANAGER        // Business manager
+  EMPLOYEE       // Regular employee
+  ACCOUNTANT     // Finance/accounting staff
 }
 
+/**
+ * Audit Log - System-wide activity tracking
+ * 
+ * Tracks all CRUD operations across the platform for compliance,
+ * debugging, and security monitoring.
+ */
 model AuditLog {
   id        String   @id @default(cuid())
-  tableName String
-  recordId  String
-  action    String // "CREATE", "UPDATE", "DELETE"
-  oldData   Json?
-  newData   Json?
-  userId    String
+  tableName String   // Table that was modified
+  recordId  String   // ID of the record that was modified
+  action    String   // "CREATE", "UPDATE", "DELETE"
+  oldData   Json?    // Previous state of the record
+  newData   Json?    // New state of the record
+  userId    String   // Who made the change
   createdAt DateTime @default(now())
 
   @@index([tableName, recordId])
@@ -66,6 +78,17 @@ model AuditLog {
 // ============================================
 // BUSINESS & MULTI-TENANCY
 // ============================================
+
+/**
+ * Business Model - Core tenant entity for multi-tenant architecture
+ * 
+ * Each business represents an independent tenant with its own:
+ * - Users and permissions
+ * - Products and inventory
+ * - Sales and purchase data
+ * - Financial records
+ * - Settings and configuration
+ */
 
 model Business {
   id             String    @id @default(cuid())

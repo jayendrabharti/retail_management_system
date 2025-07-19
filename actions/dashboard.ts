@@ -5,7 +5,21 @@ import { SaleStatus, PurchaseStatus } from "@prisma/client";
 import { getErrorMessage } from "@/utils/utils";
 import { getCurrentBusinessId } from "./businesses";
 
-// Get dashboard overview data
+/**
+ * Dashboard Server Actions
+ *
+ * Provides comprehensive analytics and overview data for the business dashboard:
+ * - Sales and purchase statistics
+ * - Financial metrics and KPIs
+ * - Inventory insights
+ * - Recent activities and trends
+ * - Period-over-period comparisons
+ */
+
+/**
+ * Get comprehensive dashboard overview data with optional date filtering
+ * Returns aggregated statistics for sales, purchases, inventory, and financial metrics
+ */
 export const getDashboardOverviewAction = async (
   dateFrom?: Date,
   dateTo?: Date,
@@ -31,22 +45,22 @@ export const getDashboardOverviewAction = async (
     }
 
     const [
-      // Sales data
+      // Sales analytics
       salesStats,
       totalSalesAmount,
       recentSales,
 
-      // Purchase data
+      // Purchase analytics
       purchaseStats,
       totalPurchaseAmount,
       recentPurchases,
 
-      // Inventory data
+      // Inventory insights
       totalProducts,
       lowStockProducts,
       outOfStockProducts,
 
-      // Party data
+      // Business metrics
       totalCustomers,
       totalSuppliers,
 
