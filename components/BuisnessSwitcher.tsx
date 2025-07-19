@@ -26,17 +26,17 @@ export default function BusinessSwitcher({ expanded }: { expanded: boolean }) {
       <DropdownMenuTrigger asChild>
         <div
           className={cn(
-            "flex flex-row items-center gap-4 cursor-pointer rounded-xl group-hover:bg-muted relative p-2",
-            expanded ? "bg-muted" : ""
+            "group-hover:bg-muted relative flex cursor-pointer flex-row items-center gap-4 rounded-xl p-2",
+            expanded ? "bg-muted" : "",
           )}
         >
           <Avatar className="size-10">
-            {/* <AvatarImage
-              src={"/placeholder.svg"}
+            <AvatarImage
+              src={selectedBusiness?.logoImage || ""}
               alt={selectedBusiness?.name || ""}
-            /> */}
+            />
             <AvatarFallback
-              className={cn("text-xs text-background bg-primary")}
+              className={cn("text-background bg-primary text-xs")}
             >
               {selectedBusiness?.name?.slice(0, 2).toUpperCase() || "NA"}
             </AvatarFallback>
@@ -44,11 +44,8 @@ export default function BusinessSwitcher({ expanded }: { expanded: boolean }) {
 
           <span
             className={cn(
-              `truncate
-                  text-foreground opacity-0 pointer-events-none
-                  group-hover:opacity-100 group-hover:pointer-events-auto
-                  transition-opacity duration-200 w-max`,
-              expanded ? "opacity-100 pointer-events-auto" : ""
+              `text-foreground pointer-events-none w-max truncate opacity-0 transition-opacity duration-200 group-hover:pointer-events-auto group-hover:opacity-100`,
+              expanded ? "pointer-events-auto opacity-100" : "",
             )}
           >
             {selectedBusiness?.name || "Select Business"}
@@ -66,15 +63,18 @@ export default function BusinessSwitcher({ expanded }: { expanded: boolean }) {
             }}
             className={cn(
               "cursor-pointer py-2",
-              businessId === business.id && "border-2 border-muted-foreground"
+              businessId === business.id && "border-muted-foreground border-2",
             )}
           >
             <div className="flex w-full items-center justify-between">
               <div className="flex items-center gap-2">
                 <Avatar className="h-6 w-6">
-                  {/* <AvatarImage src={"/placeholder.svg"} alt={business.name} /> */}
+                  <AvatarImage
+                    src={business.logoImage || ""}
+                    alt={business.name}
+                  />
                   <AvatarFallback
-                    className={cn("text-xs text-background bg-primary")}
+                    className={cn("text-background bg-primary text-xs")}
                   >
                     {business.name.slice(0, 2).toUpperCase()}
                   </AvatarFallback>
@@ -82,7 +82,7 @@ export default function BusinessSwitcher({ expanded }: { expanded: boolean }) {
                 <span>{business.name}</span>
               </div>
               {businessId === business.id && (
-                <FaCheck className="h-4 w-4 ml-2" />
+                <FaCheck className="ml-2 h-4 w-4" />
               )}
               {/* <Check className="h-4 w-4 ml-2" />} */}
             </div>
