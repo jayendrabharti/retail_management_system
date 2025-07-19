@@ -11,6 +11,17 @@ import { PiInvoiceDuotone } from "react-icons/pi";
 import BusinessSwitcher from "./BuisnessSwitcher";
 import { useData } from "@/providers/DataProvider";
 
+/**
+ * Main Navigation Sidebar Component
+ *
+ * Features:
+ * - Collapsible sidebar with hover expansion
+ * - Business switcher integration
+ * - Active route highlighting
+ * - Responsive design with icon-only collapsed state
+ * - Smooth animations and transitions
+ */
+
 interface NavItem {
   title: string;
   href: string;
@@ -20,6 +31,7 @@ interface NavItem {
 export default function Navbar() {
   const pathname = usePathname();
 
+  // Main navigation items for the retail management system
   const navItems: NavItem[] = [
     {
       title: "Dashboard",
@@ -35,10 +47,9 @@ export default function Navbar() {
       title: "Billing",
       href: "/bills",
       icon: PiInvoiceDuotone,
-      // icon: CreditCard,
     },
     {
-      title: "Parties",
+      title: "Parties", // Customers & Suppliers
       href: "/parties",
       icon: Users,
     },
@@ -59,40 +70,43 @@ export default function Navbar() {
   return (
     <nav
       className={cn(
-        `group flex flex-col
-        hover:w-60 w-19 navbar backdrop-blur-lg p-2.5 overflow-hidden
-        transition-all duration-300 ease-in-out z-10 row-start-2 row-end-3 bg-sidebar max-h-screen`,
-        expanded ? "w-60" : ""
+        `group navbar bg-sidebar z-10 row-start-2 row-end-3 flex max-h-screen w-19 flex-col overflow-hidden p-2.5 backdrop-blur-lg transition-all duration-300 ease-in-out hover:w-60`,
+        expanded ? "w-60" : "",
       )}
     >
+      {/* Business Switcher at the top */}
       <BusinessSwitcher expanded={expanded} />
       <Separator className="my-2" />
-      <div className="flex flex-col space-y-2 list-none p-0 min-w-max flex-1 gap-1 transition-all duration-200">
+
+      {/* Main navigation items */}
+      <div className="flex min-w-max flex-1 list-none flex-col gap-1 space-y-2 p-0 transition-all duration-200">
         {navItems.map((navLink, index) => {
           const active = pathname.startsWith(navLink.href);
           return (
             <Fragment key={index}>
+              {/* Separator before settings (last item) */}
               {index === navItems.length - 1 && <Separator className="mt-3" />}
               <Link
                 href={navLink.href}
                 className={cn(
-                  "flex flex-row items-center cursor-pointer rounded-xl hover:bg-muted relative"
+                  "hover:bg-muted relative flex cursor-pointer flex-row items-center rounded-xl",
                 )}
                 prefetch={true}
               >
+                {/* Navigation icon */}
                 <navLink.icon
-                  className={`${active ? "bg-primary text-primary-foreground" : "text-muted-foreground"} size-8 p-1.5 m-2.5 rounded-lg peer`}
+                  className={`${active ? "bg-primary text-primary-foreground" : "text-muted-foreground"} peer m-2.5 size-8 rounded-lg p-1.5`}
                 />
 
-                {/* Collapsed label */}
+                {/* Collapsed state label (shows below icon when sidebar is collapsed) */}
                 <span
                   className={cn(
                     `absolute left-7 -translate-x-1/2 text-xs`,
                     active
                       ? "text-foreground top-[90%] font-bold"
                       : "text-muted-foreground top-[80%]",
-                    `group-hover:opacity-0 group-hover:pointer-events-none transition-opacity duration-200`,
-                    expanded ? "opacity-0 pointer-events-none" : ""
+                    `transition-opacity duration-200 group-hover:pointer-events-none group-hover:opacity-0`,
+                    expanded ? "pointer-events-none opacity-0" : "",
                   )}
                 >
                   {navLink.title}
@@ -101,14 +115,11 @@ export default function Navbar() {
                 {/* Expanded label */}
                 <span
                   className={cn(
-                    `
-                    text-foreground opacity-0 pointer-events-none
-                    group-hover:opacity-100 group-hover:pointer-events-auto
-                    transition-opacity duration-200`,
+                    `text-foreground pointer-events-none opacity-0 transition-opacity duration-200 group-hover:pointer-events-auto group-hover:opacity-100`,
                     active
                       ? "text-foreground font-bold"
                       : "text-muted-foreground",
-                    expanded ? "opacity-100 pointer-events-auto" : ""
+                    expanded ? "pointer-events-auto opacity-100" : "",
                   )}
                 >
                   {navLink.title}

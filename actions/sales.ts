@@ -69,12 +69,49 @@ export const getSalesAction = async (
       throw new Error("No business selected");
     }
 
+    // Verify user has access to this business
+    const supabase = await createSupabaseClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user?.id) throw new Error("User not authenticated");
+
+    const dbUser = await prisma.user.findUnique({
+      where: { userId: user.id },
+    });
+
+    if (!dbUser) {
+      throw new Error("User not found in database");
+    }
+
+    // Verify business access
+    const businessAccess = await prisma.business.findFirst({
+      where: {
+        id: businessId,
+        OR: [
+          { ownerId: dbUser.id },
+          { users: { some: { userId: dbUser.id, isActive: true } } },
+        ],
+      },
+    });
+
+    if (!businessAccess) {
+      throw new Error("Access denied to business");
+    }
+
     const whereClause: any = {
       businessId,
     };
 
-    // Apply filters
+    // Apply filters with proper validation
     if (filters?.partyId) {
+      // Validate party belongs to business
+      const party = await prisma.party.findFirst({
+        where: { id: filters.partyId, businessId },
+      });
+      if (!party) {
+        throw new Error("Invalid party specified");
+      }
       whereClause.partyId = filters.partyId;
     }
 
@@ -97,24 +134,49 @@ export const getSalesAction = async (
     }
 
     if (filters?.search) {
+      // Sanitize search input to prevent injection
+      const sanitizedSearch = filters.search.replace(/[%_\\]/g, "\\$&");
       whereClause.OR = [
-        { invoiceNumber: { contains: filters.search, mode: "insensitive" } },
-        { notes: { contains: filters.search, mode: "insensitive" } },
-        { party: { name: { contains: filters.search, mode: "insensitive" } } },
+        { invoiceNumber: { contains: sanitizedSearch, mode: "insensitive" } },
+        { notes: { contains: sanitizedSearch, mode: "insensitive" } },
+        { party: { name: { contains: sanitizedSearch, mode: "insensitive" } } },
       ];
     }
 
     const sales = await prisma.sale.findMany({
       where: whereClause,
       include: {
-        party: true,
+        party: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+            // Don't expose sensitive party data
+          },
+        },
         paymentTerm: true,
-        quotation: true,
+        quotation: {
+          select: {
+            id: true,
+            quotationNumber: true,
+            status: true,
+          },
+        },
         items: {
           include: {
             product: {
-              include: {
-                category: true,
+              select: {
+                id: true,
+                name: true,
+                sku: true,
+                unit: true,
+                category: {
+                  select: {
+                    id: true,
+                    name: true,
+                  },
+                },
               },
             },
           },
@@ -128,6 +190,8 @@ export const getSalesAction = async (
         },
       },
       orderBy: [{ saleDate: "desc" }, { saleNumber: "desc" }],
+      // Limit results to prevent performance issues
+      take: 1000,
     });
 
     return { data: sales, errorMessage: null };
@@ -145,9 +209,44 @@ export const getSaleAction = async (id: string): Promise<SaleResult> => {
       throw new Error("No business selected");
     }
 
+    // Authentication and authorization
+    const supabase = await createSupabaseClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user?.id) throw new Error("User not authenticated");
+
+    const dbUser = await prisma.user.findUnique({
+      where: { userId: user.id },
+    });
+
+    if (!dbUser) {
+      throw new Error("User not found in database");
+    }
+
+    // Verify business access
+    const businessAccess = await prisma.business.findFirst({
+      where: {
+        id: businessId,
+        OR: [
+          { ownerId: dbUser.id },
+          { users: { some: { userId: dbUser.id, isActive: true } } },
+        ],
+      },
+    });
+
+    if (!businessAccess) {
+      throw new Error("Access denied to business");
+    }
+
+    // Input validation
+    if (!id || typeof id !== "string" || id.trim().length === 0) {
+      throw new Error("Invalid sale ID");
+    }
+
     const sale = await prisma.sale.findFirst({
       where: {
-        id,
+        id: id.trim(),
         businessId,
       },
       include: {
@@ -205,115 +304,180 @@ export const createSaleAction = async (
       throw new Error("No business selected");
     }
 
+    // Authentication and authorization
     const supabase = await createSupabaseClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user?.id) throw new Error("User not authenticated");
 
-    // Verify party exists if provided
-    if (data.partyId) {
-      const party = await prisma.party.findFirst({
-        where: {
-          id: data.partyId,
-          businessId,
-          isActive: true,
-        },
-      });
+    const dbUser = await prisma.user.findUnique({
+      where: { userId: user.id },
+    });
 
-      if (!party) {
-        throw new Error("Customer not found");
-      }
+    if (!dbUser) {
+      throw new Error("User not found in database");
     }
 
-    // Verify payment term exists if provided
-    if (data.paymentTermId) {
-      const paymentTerm = await prisma.paymentTerm.findFirst({
-        where: {
-          id: data.paymentTermId,
-          businessId,
-          isActive: true,
-        },
-      });
+    // Verify business access
+    const businessAccess = await prisma.business.findFirst({
+      where: {
+        id: businessId,
+        OR: [
+          { ownerId: dbUser.id },
+          { users: { some: { userId: dbUser.id, isActive: true } } },
+        ],
+      },
+    });
 
-      if (!paymentTerm) {
-        throw new Error("Payment term not found");
-      }
+    if (!businessAccess) {
+      throw new Error("Access denied to business");
     }
 
-    // Verify quotation exists if provided
-    if (data.quotationId) {
-      const quotation = await prisma.quotation.findFirst({
-        where: {
-          id: data.quotationId,
-          businessId,
-          status: "ACCEPTED",
-        },
-      });
-
-      if (!quotation) {
-        throw new Error("Quotation not found or not accepted");
-      }
+    // Input validation
+    if (!data.items || data.items.length === 0) {
+      throw new Error("At least one item is required");
     }
 
-    // Verify all products exist and calculate totals
-    let subtotal = 0;
-    let totalTaxAmount = 0;
-    let totalDiscountAmount = 0;
+    if (data.items.length > 100) {
+      throw new Error("Too many items in sale (max 100)");
+    }
 
+    // Validate all numeric values
     for (const item of data.items) {
-      const product = await prisma.product.findFirst({
-        where: {
-          id: item.productId,
-          businessId,
-          isActive: true,
-        },
-      });
-
-      if (!product) {
-        throw new Error(`Product not found: ${item.productId}`);
+      if (item.quantity <= 0) {
+        throw new Error("Item quantity must be positive");
       }
+      if (item.unitPrice < 0) {
+        throw new Error("Item unit price cannot be negative");
+      }
+      if (item.taxRate && (item.taxRate < 0 || item.taxRate > 100)) {
+        throw new Error("Tax rate must be between 0 and 100");
+      }
+      if (item.discount && (item.discount < 0 || item.discount > 100)) {
+        throw new Error("Discount must be between 0 and 100");
+      }
+    }
 
-      // Check inventory if product tracks inventory
-      if (product.trackInventory) {
-        const inventory = await prisma.inventory.findFirst({
+    // Use database transaction for atomicity and race condition prevention
+    const newSale = await prisma.$transaction(async (tx) => {
+      // Verify party exists if provided (within transaction)
+      if (data.partyId) {
+        const party = await tx.party.findFirst({
           where: {
-            productId: item.productId,
+            id: data.partyId,
             businessId,
+            isActive: true,
           },
         });
 
-        if (
-          inventory &&
-          inventory.availableQty < item.quantity &&
-          !product.allowNegative
-        ) {
-          throw new Error(`Insufficient stock for product: ${product.name}`);
+        if (!party) {
+          throw new Error("Customer not found");
         }
       }
 
-      const itemSubtotal = item.quantity * item.unitPrice;
-      const itemDiscount = itemSubtotal * ((item.discount || 0) / 100);
-      const discountedAmount = itemSubtotal - itemDiscount;
-      const itemTax =
-        discountedAmount * ((item.taxRate || product.taxRate.toNumber()) / 100);
+      // Verify payment term exists if provided
+      if (data.paymentTermId) {
+        const paymentTerm = await tx.paymentTerm.findFirst({
+          where: {
+            id: data.paymentTermId,
+            businessId,
+            isActive: true,
+          },
+        });
 
-      subtotal += itemSubtotal;
-      totalDiscountAmount += itemDiscount;
-      totalTaxAmount += itemTax;
-    }
+        if (!paymentTerm) {
+          throw new Error("Payment term not found");
+        }
+      }
 
-    const totalAmount = subtotal - totalDiscountAmount + totalTaxAmount;
+      // Verify quotation exists if provided
+      if (data.quotationId) {
+        const quotation = await tx.quotation.findFirst({
+          where: {
+            id: data.quotationId,
+            businessId,
+            status: "ACCEPTED",
+          },
+        });
 
-    // Generate invoice number
-    const saleCount = await prisma.sale.count({
-      where: { businessId },
-    });
-    const invoiceNumber = `INV-${String(saleCount + 1).padStart(6, "0")}`;
+        if (!quotation) {
+          throw new Error("Quotation not found or not accepted");
+        }
+      }
 
-    const sale = await prisma.$transaction(async (tx) => {
+      // Verify all products exist and calculate totals with inventory checks
+      let subtotal = 0;
+      let totalTaxAmount = 0;
+      let totalDiscountAmount = 0;
+
+      for (const item of data.items) {
+        const product = await tx.product.findFirst({
+          where: {
+            id: item.productId,
+            businessId,
+            isActive: true,
+          },
+        });
+
+        if (!product) {
+          throw new Error(`Product not found: ${item.productId}`);
+        }
+
+        // Check inventory with row-level locking to prevent race conditions
+        if (product.trackInventory) {
+          const inventory = await tx.inventory.findFirst({
+            where: {
+              productId: item.productId,
+              businessId,
+            },
+          });
+
+          if (!inventory) {
+            throw new Error(
+              `No inventory record found for product: ${product.name}`,
+            );
+          }
+
+          if (
+            inventory.availableQty < item.quantity &&
+            !product.allowNegative
+          ) {
+            throw new Error(
+              `Insufficient stock for product: ${product.name}. Available: ${inventory.availableQty}, Required: ${item.quantity}`,
+            );
+          }
+        }
+
+        // Calculate item totals with precision
+        const itemSubtotal = Number(
+          (item.quantity * item.unitPrice).toFixed(2),
+        );
+        const discountRate = item.discount || 0;
+        const itemDiscount = Number(
+          (itemSubtotal * (discountRate / 100)).toFixed(2),
+        );
+        const discountedAmount = itemSubtotal - itemDiscount;
+        const taxRate = item.taxRate || product.taxRate.toNumber();
+        const itemTax = Number((discountedAmount * (taxRate / 100)).toFixed(2));
+
+        subtotal += itemSubtotal;
+        totalDiscountAmount += itemDiscount;
+        totalTaxAmount += itemTax;
+      }
+
+      const totalAmount = Number(
+        (subtotal - totalDiscountAmount + totalTaxAmount).toFixed(2),
+      );
+
+      // Generate unique invoice number with race condition protection
+      const currentCount = await tx.sale.count({
+        where: { businessId },
+      });
+      const invoiceNumber = `INV-${String(currentCount + 1).padStart(6, "0")}`;
+
       // Create sale
-      const newSale = await tx.sale.create({
+      const sale = await tx.sale.create({
         data: {
           partyId: data.partyId,
           saleDate: data.saleDate || new Date(),
@@ -327,8 +491,9 @@ export const createSaleAction = async (
           discountAmount: new Decimal(totalDiscountAmount),
           totalAmount: new Decimal(totalAmount),
           balanceAmount: new Decimal(totalAmount),
-          notes: data.notes,
+          notes: data.notes?.trim() || null,
           businessId,
+          status: "PENDING",
         },
       });
 
@@ -350,7 +515,7 @@ export const createSaleAction = async (
         // Create sale item
         await tx.saleItem.create({
           data: {
-            saleId: newSale.id,
+            saleId: sale.id,
             productId: item.productId,
             quantity: item.quantity,
             unitPrice: new Decimal(item.unitPrice),
@@ -387,7 +552,7 @@ export const createSaleAction = async (
                 businessId,
                 type: "OUT",
                 quantity: item.quantity,
-                reference: newSale.id,
+                reference: sale.id,
                 reason: "Sale",
                 notes: `Sale to ${data.partyId ? "customer" : "walk-in customer"}`,
               },
@@ -404,14 +569,14 @@ export const createSaleAction = async (
         });
       }
 
-      return newSale;
+      return sale;
     });
 
     revalidatePath("/sales");
     revalidatePath("/dashboard");
     revalidatePath("/inventory");
 
-    return { data: sale, errorMessage: null };
+    return { data: newSale, errorMessage: null };
   } catch (error) {
     console.error("Error creating sale:", error);
     return { data: null, errorMessage: getErrorMessage(error) };
@@ -428,106 +593,179 @@ export const updateSaleAction = async (
       throw new Error("No business selected");
     }
 
-    // Verify sale exists
-    const existingSale = await prisma.sale.findFirst({
+    // Authentication and authorization
+    const supabase = await createSupabaseClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user?.id) throw new Error("User not authenticated");
+
+    const dbUser = await prisma.user.findUnique({
+      where: { userId: user.id },
+    });
+
+    if (!dbUser) {
+      throw new Error("User not found in database");
+    }
+
+    // Verify business access
+    const businessAccess = await prisma.business.findFirst({
       where: {
-        id: data.id,
-        businessId,
-      },
-      include: {
-        items: true,
+        id: businessId,
+        OR: [
+          { ownerId: dbUser.id },
+          { users: { some: { userId: dbUser.id, isActive: true } } },
+        ],
       },
     });
 
-    if (!existingSale) {
-      throw new Error("Sale not found");
+    if (!businessAccess) {
+      throw new Error("Access denied to business");
     }
 
-    // Check if sale can be updated (only pending/confirmed sales can be updated)
+    // Input validation
     if (
-      existingSale.status === SaleStatus.COMPLETED ||
-      existingSale.status === SaleStatus.CANCELLED
+      !data.id ||
+      typeof data.id !== "string" ||
+      data.id.trim().length === 0
     ) {
-      throw new Error("Cannot update completed or cancelled sale");
+      throw new Error("Invalid sale ID");
     }
 
-    // Verify party exists if being changed
-    if (data.partyId && data.partyId !== existingSale.partyId) {
-      const party = await prisma.party.findFirst({
+    // Use transaction for atomic operations
+    const sale = await prisma.$transaction(async (tx) => {
+      // Verify sale exists within transaction
+      const existingSale = await tx.sale.findFirst({
         where: {
-          id: data.partyId,
+          id: data.id,
           businessId,
-          isActive: true,
+        },
+        include: {
+          items: true,
         },
       });
 
-      if (!party) {
-        throw new Error("Customer not found");
+      if (!existingSale) {
+        throw new Error("Sale not found");
       }
-    }
 
-    // If items are being updated, recalculate totals
-    let updateData: any = {
-      ...(data.partyId !== undefined && { partyId: data.partyId }),
-      ...(data.saleDate !== undefined && { saleDate: data.saleDate }),
-      ...(data.dueDate !== undefined && { dueDate: data.dueDate }),
-      ...(data.status !== undefined && { status: data.status }),
-      ...(data.paymentMethod !== undefined && {
-        paymentMethod: data.paymentMethod,
-      }),
-      ...(data.paymentTermId !== undefined && {
-        paymentTermId: data.paymentTermId,
-      }),
-      ...(data.notes !== undefined && { notes: data.notes }),
-      updatedAt: new Date(),
-    };
+      // Check if sale can be updated (only pending/confirmed sales can be updated)
+      if (
+        existingSale.status === SaleStatus.COMPLETED ||
+        existingSale.status === SaleStatus.CANCELLED
+      ) {
+        throw new Error("Cannot update completed or cancelled sale");
+      }
 
-    if (data.items) {
-      // Calculate new totals
-      let subtotal = 0;
-      let totalTaxAmount = 0;
-      let totalDiscountAmount = 0;
-
-      for (const item of data.items) {
-        const product = await prisma.product.findFirst({
+      // Verify party exists if being changed
+      if (data.partyId && data.partyId !== existingSale.partyId) {
+        const party = await tx.party.findFirst({
           where: {
-            id: item.productId,
+            id: data.partyId,
             businessId,
             isActive: true,
           },
         });
 
-        if (!product) {
-          throw new Error(`Product not found: ${item.productId}`);
+        if (!party) {
+          throw new Error("Customer not found");
         }
-
-        const itemSubtotal = item.quantity * item.unitPrice;
-        const itemDiscount = itemSubtotal * ((item.discount || 0) / 100);
-        const discountedAmount = itemSubtotal - itemDiscount;
-        const itemTax =
-          discountedAmount *
-          ((item.taxRate || product.taxRate.toNumber()) / 100);
-
-        subtotal += itemSubtotal;
-        totalDiscountAmount += itemDiscount;
-        totalTaxAmount += itemTax;
       }
 
-      const totalAmount = subtotal - totalDiscountAmount + totalTaxAmount;
-
-      updateData = {
-        ...updateData,
-        subtotal: new Decimal(subtotal),
-        taxAmount: new Decimal(totalTaxAmount),
-        discountAmount: new Decimal(totalDiscountAmount),
-        totalAmount: new Decimal(totalAmount),
-        balanceAmount: new Decimal(
-          totalAmount - existingSale.paidAmount.toNumber(),
-        ),
+      // If items are being updated, validate them
+      let updateData: any = {
+        ...(data.partyId !== undefined && { partyId: data.partyId }),
+        ...(data.saleDate !== undefined && { saleDate: data.saleDate }),
+        ...(data.dueDate !== undefined && { dueDate: data.dueDate }),
+        ...(data.status !== undefined && { status: data.status }),
+        ...(data.paymentMethod !== undefined && {
+          paymentMethod: data.paymentMethod,
+        }),
+        ...(data.paymentTermId !== undefined && {
+          paymentTermId: data.paymentTermId,
+        }),
+        ...(data.notes !== undefined && { notes: data.notes?.trim() || null }),
+        updatedAt: new Date(),
       };
-    }
 
-    const sale = await prisma.$transaction(async (tx) => {
+      if (data.items) {
+        // Validate items
+        if (data.items.length === 0) {
+          throw new Error("At least one item is required");
+        }
+
+        if (data.items.length > 100) {
+          throw new Error("Too many items in sale (max 100)");
+        }
+
+        // Validate all numeric values
+        for (const item of data.items) {
+          if (item.quantity <= 0) {
+            throw new Error("Item quantity must be positive");
+          }
+          if (item.unitPrice < 0) {
+            throw new Error("Item unit price cannot be negative");
+          }
+          if (item.taxRate && (item.taxRate < 0 || item.taxRate > 100)) {
+            throw new Error("Tax rate must be between 0 and 100");
+          }
+          if (item.discount && (item.discount < 0 || item.discount > 100)) {
+            throw new Error("Discount must be between 0 and 100");
+          }
+        }
+
+        // Calculate new totals
+        let subtotal = 0;
+        let totalTaxAmount = 0;
+        let totalDiscountAmount = 0;
+
+        for (const item of data.items) {
+          const product = await tx.product.findFirst({
+            where: {
+              id: item.productId,
+              businessId,
+              isActive: true,
+            },
+          });
+
+          if (!product) {
+            throw new Error(`Product not found: ${item.productId}`);
+          }
+
+          const itemSubtotal = Number(
+            (item.quantity * item.unitPrice).toFixed(2),
+          );
+          const discountRate = item.discount || 0;
+          const itemDiscount = Number(
+            (itemSubtotal * (discountRate / 100)).toFixed(2),
+          );
+          const discountedAmount = itemSubtotal - itemDiscount;
+          const taxRate = item.taxRate || product.taxRate.toNumber();
+          const itemTax = Number(
+            (discountedAmount * (taxRate / 100)).toFixed(2),
+          );
+
+          subtotal += itemSubtotal;
+          totalDiscountAmount += itemDiscount;
+          totalTaxAmount += itemTax;
+        }
+
+        const totalAmount = Number(
+          (subtotal - totalDiscountAmount + totalTaxAmount).toFixed(2),
+        );
+
+        updateData = {
+          ...updateData,
+          subtotal: new Decimal(subtotal),
+          taxAmount: new Decimal(totalTaxAmount),
+          discountAmount: new Decimal(totalDiscountAmount),
+          totalAmount: new Decimal(totalAmount),
+          balanceAmount: new Decimal(
+            totalAmount - existingSale.paidAmount.toNumber(),
+          ),
+        };
+      }
+
       // Update sale
       const updatedSale = await tx.sale.update({
         where: { id: data.id },
@@ -564,6 +802,19 @@ export const updateSaleAction = async (
                   lastUpdated: new Date(),
                 },
               });
+
+              // Create stock movement for reversion
+              await tx.stockMovement.create({
+                data: {
+                  productId: existingItem.productId,
+                  businessId,
+                  type: "IN",
+                  quantity: existingItem.quantity,
+                  reference: data.id,
+                  reason: "Sale Update - Revert",
+                  notes: `Reverted stock for sale update`,
+                },
+              });
             }
           }
         }
@@ -575,6 +826,31 @@ export const updateSaleAction = async (
           });
 
           if (!product) continue;
+
+          // Check inventory for new items
+          if (product.trackInventory) {
+            const inventory = await tx.inventory.findFirst({
+              where: {
+                productId: item.productId,
+                businessId,
+              },
+            });
+
+            if (!inventory) {
+              throw new Error(
+                `No inventory record found for product: ${product.name}`,
+              );
+            }
+
+            if (
+              inventory.availableQty < item.quantity &&
+              !product.allowNegative
+            ) {
+              throw new Error(
+                `Insufficient stock for product: ${product.name}. Available: ${inventory.availableQty}, Required: ${item.quantity}`,
+              );
+            }
+          }
 
           const itemSubtotal = item.quantity * item.unitPrice;
           const itemDiscount = itemSubtotal * ((item.discount || 0) / 100);
@@ -615,6 +891,19 @@ export const updateSaleAction = async (
                   lastUpdated: new Date(),
                 },
               });
+
+              // Create stock movement
+              await tx.stockMovement.create({
+                data: {
+                  productId: item.productId,
+                  businessId,
+                  type: "OUT",
+                  quantity: item.quantity,
+                  reference: data.id,
+                  reason: "Sale Update",
+                  notes: `Updated sale item`,
+                },
+              });
             }
           }
         }
@@ -642,32 +931,74 @@ export const cancelSaleAction = async (id: string): Promise<SaleResult> => {
       throw new Error("No business selected");
     }
 
-    const existingSale = await prisma.sale.findFirst({
+    // Authentication and authorization
+    const supabase = await createSupabaseClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user?.id) throw new Error("User not authenticated");
+
+    const dbUser = await prisma.user.findUnique({
+      where: { userId: user.id },
+    });
+
+    if (!dbUser) {
+      throw new Error("User not found in database");
+    }
+
+    // Verify business access
+    const businessAccess = await prisma.business.findFirst({
       where: {
-        id,
-        businessId,
-      },
-      include: {
-        items: true,
+        id: businessId,
+        OR: [
+          { ownerId: dbUser.id },
+          { users: { some: { userId: dbUser.id, isActive: true } } },
+        ],
       },
     });
 
-    if (!existingSale) {
-      throw new Error("Sale not found");
+    if (!businessAccess) {
+      throw new Error("Access denied to business");
     }
 
-    if (existingSale.status === SaleStatus.COMPLETED) {
-      throw new Error("Cannot cancel completed sale");
-    }
-
-    if (existingSale.status === SaleStatus.CANCELLED) {
-      throw new Error("Sale is already cancelled");
+    // Input validation
+    if (!id || typeof id !== "string" || id.trim().length === 0) {
+      throw new Error("Invalid sale ID");
     }
 
     const sale = await prisma.$transaction(async (tx) => {
+      const existingSale = await tx.sale.findFirst({
+        where: {
+          id: id.trim(),
+          businessId,
+        },
+        include: {
+          items: true,
+        },
+      });
+
+      if (!existingSale) {
+        throw new Error("Sale not found");
+      }
+
+      if (existingSale.status === SaleStatus.COMPLETED) {
+        throw new Error("Cannot cancel completed sale");
+      }
+
+      if (existingSale.status === SaleStatus.CANCELLED) {
+        throw new Error("Sale is already cancelled");
+      }
+
+      // Check if sale has payments - only allow cancellation if no payments or full refund
+      if (existingSale.paidAmount.toNumber() > 0) {
+        throw new Error(
+          "Cannot cancel sale with payments. Create a return instead.",
+        );
+      }
+
       // Update sale status
       const cancelledSale = await tx.sale.update({
-        where: { id },
+        where: { id: id.trim() },
         data: {
           status: SaleStatus.CANCELLED,
           updatedAt: new Date(),
@@ -705,8 +1036,9 @@ export const cancelSaleAction = async (id: string): Promise<SaleResult> => {
                 businessId,
                 type: "IN",
                 quantity: item.quantity,
-                reference: id,
+                reference: id.trim(),
                 reason: "Sale cancellation",
+                notes: `Sale ${existingSale.invoiceNumber} cancelled - stock restored`,
               },
             });
           }
@@ -740,41 +1072,95 @@ export const recordSalePaymentAction = async (
       throw new Error("No business selected");
     }
 
-    const sale = await prisma.sale.findFirst({
+    // Authentication and authorization
+    const supabase = await createSupabaseClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user?.id) throw new Error("User not authenticated");
+
+    const dbUser = await prisma.user.findUnique({
+      where: { userId: user.id },
+    });
+
+    if (!dbUser) {
+      throw new Error("User not found in database");
+    }
+
+    // Verify business access
+    const businessAccess = await prisma.business.findFirst({
       where: {
-        id: saleId,
-        businessId,
+        id: businessId,
+        OR: [
+          { ownerId: dbUser.id },
+          { users: { some: { userId: dbUser.id, isActive: true } } },
+        ],
       },
     });
 
-    if (!sale) {
-      throw new Error("Sale not found");
+    if (!businessAccess) {
+      throw new Error("Access denied to business");
     }
 
-    if (amount <= 0) {
+    // Input validation
+    if (!saleId || typeof saleId !== "string" || saleId.trim().length === 0) {
+      throw new Error("Invalid sale ID");
+    }
+
+    if (!amount || typeof amount !== "number" || amount <= 0) {
       throw new Error("Payment amount must be greater than 0");
     }
 
-    if (amount > sale.balanceAmount.toNumber()) {
-      throw new Error("Payment amount cannot exceed balance amount");
+    if (amount > 999999999) {
+      throw new Error("Payment amount is too large");
     }
 
-    const newPaidAmount = sale.paidAmount.toNumber() + amount;
-    const newBalanceAmount = sale.totalAmount.toNumber() - newPaidAmount;
+    if (
+      !paymentMethod ||
+      !Object.values(PaymentMethod).includes(paymentMethod)
+    ) {
+      throw new Error("Invalid payment method");
+    }
 
     const updatedSale = await prisma.$transaction(async (tx) => {
+      const sale = await tx.sale.findFirst({
+        where: {
+          id: saleId.trim(),
+          businessId,
+        },
+      });
+
+      if (!sale) {
+        throw new Error("Sale not found");
+      }
+
+      if (sale.status === SaleStatus.CANCELLED) {
+        throw new Error("Cannot record payment for cancelled sale");
+      }
+
+      const currentBalance = sale.balanceAmount.toNumber();
+
+      if (amount > currentBalance) {
+        throw new Error(
+          `Payment amount (${amount}) cannot exceed balance amount (${currentBalance})`,
+        );
+      }
+
+      const newPaidAmount = sale.paidAmount.toNumber() + amount;
+      const newBalanceAmount = sale.totalAmount.toNumber() - newPaidAmount;
+
       // Update sale payment amounts
       const updated = await tx.sale.update({
-        where: { id: saleId },
+        where: { id: saleId.trim() },
         data: {
           paidAmount: new Decimal(newPaidAmount),
           balanceAmount: new Decimal(newBalanceAmount),
-          status: newBalanceAmount <= 0 ? SaleStatus.COMPLETED : sale.status,
+          status: newBalanceAmount <= 0.01 ? SaleStatus.COMPLETED : sale.status, // Use small tolerance for floating point
           updatedAt: new Date(),
         },
       });
 
-      // Create transaction record
+      // Create transaction record for accounting
       const cashAccount = await tx.account.findFirst({
         where: {
           businessId,
@@ -793,15 +1179,15 @@ export const recordSalePaymentAction = async (
         await tx.transaction.create({
           data: {
             businessId,
-            description: `Payment received for sale ${sale.saleNumber}`,
+            description: `Payment received for sale ${sale.invoiceNumber}`,
             amount: new Decimal(amount),
             type: "RECEIPT",
             debitAccountId: cashAccount.id,
             creditAccountId: receivablesAccount.id,
-            saleId: saleId,
+            saleId: saleId.trim(),
             partyId: sale.partyId,
-            reference: `SAL-${sale.saleNumber}`,
-            notes,
+            reference: `SAL-${sale.invoiceNumber}`,
+            notes: notes?.trim() || null,
           },
         });
       }
@@ -825,6 +1211,49 @@ export const getSalesStatsAction = async (dateFrom?: Date, dateTo?: Date) => {
     const businessId = await getCurrentBusinessId();
     if (!businessId) {
       throw new Error("No business selected");
+    }
+
+    // Authentication and authorization
+    const supabase = await createSupabaseClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user?.id) throw new Error("User not authenticated");
+
+    const dbUser = await prisma.user.findUnique({
+      where: { userId: user.id },
+    });
+
+    if (!dbUser) {
+      throw new Error("User not found in database");
+    }
+
+    // Verify business access
+    const businessAccess = await prisma.business.findFirst({
+      where: {
+        id: businessId,
+        OR: [
+          { ownerId: dbUser.id },
+          { users: { some: { userId: dbUser.id, isActive: true } } },
+        ],
+      },
+    });
+
+    if (!businessAccess) {
+      throw new Error("Access denied to business");
+    }
+
+    // Input validation
+    if (dateFrom && dateTo && dateFrom > dateTo) {
+      throw new Error("Start date cannot be after end date");
+    }
+
+    if (dateFrom && dateFrom > new Date()) {
+      throw new Error("Start date cannot be in the future");
+    }
+
+    if (dateTo && dateTo > new Date()) {
+      throw new Error("End date cannot be in the future");
     }
 
     const whereClause: any = { businessId };
@@ -876,13 +1305,27 @@ export const getSalesStatsAction = async (dateFrom?: Date, dateTo?: Date) => {
     return {
       data: {
         totalSales,
-        totalAmount: totalAmount._sum.totalAmount?.toNumber() || 0,
-        paidAmount: paidAmount._sum.paidAmount?.toNumber() || 0,
-        pendingAmount: pendingAmount._sum.balanceAmount?.toNumber() || 0,
+        totalAmount: Number(
+          (totalAmount._sum.totalAmount?.toNumber() || 0).toFixed(2),
+        ),
+        paidAmount: Number(
+          (paidAmount._sum.paidAmount?.toNumber() || 0).toFixed(2),
+        ),
+        pendingAmount: Number(
+          (pendingAmount._sum.balanceAmount?.toNumber() || 0).toFixed(2),
+        ),
         averageSaleValue:
           totalSales > 0
-            ? (totalAmount._sum.totalAmount?.toNumber() || 0) / totalSales
+            ? Number(
+                (
+                  (totalAmount._sum.totalAmount?.toNumber() || 0) / totalSales
+                ).toFixed(2),
+              )
             : 0,
+        dateRange: {
+          from: dateFrom || null,
+          to: dateTo || null,
+        },
       },
       errorMessage: null,
     };

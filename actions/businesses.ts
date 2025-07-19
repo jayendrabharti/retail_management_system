@@ -11,6 +11,16 @@ import {
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 
+/**
+ * Business Management Server Actions
+ *
+ * Handles all business-related operations in a multi-tenant architecture:
+ * - CRUD operations for businesses
+ * - Business switching and current business management
+ * - Default account creation for new businesses
+ * - Access control and ownership validation
+ */
+
 // Type for business creation input
 interface CreateBusinessData {
   name: string;
@@ -487,6 +497,10 @@ export const setCurrentBusinessId = async (data: { id: string }) => {
   }
 };
 
+/**
+ * Retrieves the current business ID from secure HTTP-only cookies
+ * Used throughout the app to ensure operations are scoped to the correct business
+ */
 export const getCurrentBusinessId = async (): Promise<string | null> => {
   try {
     const cookieStore = await cookies();
@@ -497,6 +511,10 @@ export const getCurrentBusinessId = async (): Promise<string | null> => {
   }
 };
 
+/**
+ * Removes the current business ID from cookies
+ * Used when deleting a business or during logout
+ */
 export const removeCurrentBusinessId = async () => {
   try {
     const cookieStore = await cookies();
@@ -507,6 +525,10 @@ export const removeCurrentBusinessId = async () => {
   }
 };
 
+/**
+ * Creates default accounting accounts for double-entry bookkeeping
+ * This ensures every new business has the basic accounts needed for financial tracking
+ */
 async function createDefaultAccounts(businessId: string) {
   const defaultAccounts = [
     { name: "Cash", accountType: AccountType.CASH, balance: 0 },
