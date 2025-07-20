@@ -43,9 +43,9 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { uploadImage } from "@/supabase/storage";
-import { convertBlobUrlToFile } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
+import { Business } from "@prisma/client";
 
 const formSchema = z.object({
   name: z.string().min(1, "Business name is required"),
@@ -58,7 +58,6 @@ const formSchema = z.object({
   panNumber: z.string().optional(),
   currency: z.string().min(1, "Currency is required"),
   fiscalYear: z.string().min(1, "Fiscal year is required"),
-  logoImage: z.string().url("Invalid URL").nullable().or(z.literal("")),
 });
 
 export type FormValues = z.infer<typeof formSchema>;
@@ -88,7 +87,7 @@ export default function SettingsPage() {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [logoPreview, setLogoPreview] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { businessId, businesses } = useCurrentBusiness();
+  const { businessId, businesses, setBusinesses } = useCurrentBusiness();
 
   useEffect(() => {
     const currentBusiness = businesses.find((b) => b.id === businessId);
@@ -112,7 +111,6 @@ export default function SettingsPage() {
       panNumber: "",
       currency: "INR",
       fiscalYear: "april-march",
-      logoImage: "",
     },
     values: business
       ? {
@@ -126,7 +124,6 @@ export default function SettingsPage() {
           panNumber: business.panNumber || "",
           currency: business.currency || "INR",
           fiscalYear: business.fiscalYear || "april-march",
-          logoImage: business.logoImage || "",
         }
       : undefined,
   });
@@ -135,7 +132,7 @@ export default function SettingsPage() {
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file || !businessId) return;
 
     // Validate file type
     if (!file.type.startsWith("image/")) {
@@ -163,8 +160,16 @@ export default function SettingsPage() {
         return;
       }
 
+      await updateBusinessAction({
+        id: businessId,
+        logoImage: imageUrl,
+      });
       setLogoPreview(imageUrl);
-      form.setValue("logoImage", imageUrl);
+      setBusinesses((prev) =>
+        prev.map((b) =>
+          b.id === businessId ? { ...b, logoImage: imageUrl } : b,
+        ),
+      );
       toast.success("Logo uploaded successfully");
     } catch (error) {
       console.error("Logo upload error:", error);
@@ -176,7 +181,6 @@ export default function SettingsPage() {
 
   const removeLogo = () => {
     setLogoPreview("");
-    form.setValue("logoImage", "");
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -205,7 +209,6 @@ export default function SettingsPage() {
         panNumber: values.panNumber,
         currency: values.currency,
         fiscalYear: values.fiscalYear,
-        logoImage: values.logoImage || undefined,
       };
 
       const { errorMessage } = await updateBusinessAction(updateData);
@@ -216,6 +219,9 @@ export default function SettingsPage() {
         });
       } else {
         setBusiness({ ...business, ...values });
+        setBusinesses((prev) =>
+          prev.map((b) => (b.id === businessId ? { ...b, ...values } : b)),
+        );
         toast.success("Business settings updated successfully!");
       }
     } catch (error) {
@@ -260,7 +266,7 @@ export default function SettingsPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             {logoPreview ? (
-              <div className="relative">
+              <div className="flex flex-col items-center space-y-2">
                 <div className="relative mx-auto aspect-square w-full max-w-[200px] overflow-hidden rounded-lg border">
                   <Image
                     src={logoPreview}
@@ -271,13 +277,14 @@ export default function SettingsPage() {
                 </div>
                 <Button
                   type="button"
-                  variant="destructive"
+                  variant={"outline"}
                   size="sm"
-                  className="absolute top-2 right-2"
+                  className="w-full"
                   onClick={removeLogo}
                   disabled={uploadingLogo}
                 >
-                  <XIcon className="size-4" />
+                  <XIcon />
+                  Change Logo
                 </Button>
               </div>
             ) : (
@@ -310,16 +317,31 @@ export default function SettingsPage() {
             )}
 
             {!logoPreview && (
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploadingLogo}
-              >
-                <UploadIcon className="mr-2 size-4" />
-                {uploadingLogo ? "Uploading..." : "Upload Logo"}
-              </Button>
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingLogo}
+                >
+                  <UploadIcon />
+                  {uploadingLogo ? "Uploading..." : "Upload Logo"}
+                </Button>
+                {business?.logoImage && (
+                  <Button
+                    variant={"destructive"}
+                    type="button"
+                    className="w-full"
+                    onClick={() => {
+                      setLogoPreview(business.logoImage);
+                    }}
+                  >
+                    <XIcon />
+                    Cancel
+                  </Button>
+                )}
+              </>
             )}
           </CardContent>
         </Card>

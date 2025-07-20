@@ -15,6 +15,7 @@ import {
   useContext,
   useEffect,
   useState,
+  useRef,
 } from "react";
 import { toast } from "sonner";
 import Loading from "@/app/loading";
@@ -34,6 +35,7 @@ type BusinessContextType = {
   businessId: string | null;
   switchBusinessId: (args: { id: string }) => Promise<void>;
   businesses: Business[];
+  setBusinesses: React.Dispatch<React.SetStateAction<Business[]>>;
   deleteBusiness: (args: { id: string }) => Promise<void>;
   updateBusiness: (args: { id: string; name: string }) => Promise<void>;
 };
@@ -42,6 +44,7 @@ const BusinessContext = createContext<BusinessContextType>({
   businessId: null,
   switchBusinessId: async () => {},
   businesses: [],
+  setBusinesses: () => {},
   deleteBusiness: async () => {},
   updateBusiness: async () => {},
 });
@@ -56,7 +59,15 @@ export function BusinessProvider({
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const router = useRouter();
 
+  // Add ref to prevent duplicate business creation
+  const isCreatingBusiness = useRef(false);
+  const hasInitialized = useRef(false);
+
   useEffect(() => {
+    // Prevent multiple initializations
+    if (hasInitialized.current) return;
+    hasInitialized.current = true;
+
     const getBusinesses = async () => {
       try {
         // Timeout protection to prevent hanging on business initialization
@@ -91,38 +102,44 @@ export function BusinessProvider({
 
           setBusinesses(businesses);
 
-          // Auto-create default business for new users
-          if (businesses.length === 0) {
-            const { data: newBusiness, errorMessage } =
-              await createBusinessAction({
-                name: "My Business",
-              });
+          // Auto-create default business for new users (with race condition protection)
+          if (businesses.length === 0 && !isCreatingBusiness.current) {
+            isCreatingBusiness.current = true;
 
-            if (errorMessage) {
-              console.error("Error creating business:", errorMessage);
-              toast.error(`Failed to create business: ${errorMessage}`);
-              setLoading(false);
-              return;
-            }
-
-            if (!newBusiness) {
-              console.error("No business data returned from create action");
-              toast.error("Failed to create business");
-              setLoading(false);
-              return;
-            }
-
-            setBusinesses([newBusiness]);
-            setBusinessId(newBusiness.id);
-
-            // Set the new business as current in cookies
             try {
-              await setCurrentBusinessId({ id: newBusiness.id });
-            } catch (error) {
-              console.error("Error setting current business ID:", error);
-              // Continue anyway - the business was created successfully
+              const { data: newBusiness, errorMessage } =
+                await createBusinessAction({
+                  name: "My Business",
+                });
+
+              if (errorMessage) {
+                console.error("Error creating business:", errorMessage);
+                toast.error(`Failed to create business: ${errorMessage}`);
+                setLoading(false);
+                return;
+              }
+
+              if (!newBusiness) {
+                console.error("No business data returned from create action");
+                toast.error("Failed to create business");
+                setLoading(false);
+                return;
+              }
+
+              setBusinesses([newBusiness]);
+              setBusinessId(newBusiness.id);
+
+              // Set the new business as current in cookies
+              try {
+                await setCurrentBusinessId({ id: newBusiness.id });
+              } catch (error) {
+                console.error("Error setting current business ID:", error);
+                // Continue anyway - the business was created successfully
+              }
+            } finally {
+              isCreatingBusiness.current = false;
             }
-          } else {
+          } else if (businesses.length > 0) {
             // Validate and set existing business
             if (currentBusinessId) {
               const validBusinessId = businesses.some(
@@ -155,6 +172,7 @@ export function BusinessProvider({
         await Promise.race([operationPromise(), timeoutPromise]);
       } catch (error) {
         console.error("Error in BusinessProvider initialization:", error);
+        isCreatingBusiness.current = false; // Reset flag on error
 
         const errorMessage =
           error instanceof Error
@@ -169,7 +187,7 @@ export function BusinessProvider({
     };
 
     getBusinesses();
-  }, []);
+  }, []); // Remove dependencies to prevent re-runs
 
   const switchBusinessId = async ({ id }: { id: string }) => {
     await setCurrentBusinessId({ id: id });
@@ -179,7 +197,7 @@ export function BusinessProvider({
 
   const deleteBusiness = async ({ id }: { id: string }) => {
     if (businesses.length == 1) {
-      toast.error("You must have atleat one business.");
+      toast.error("You must have at least one business.");
       return;
     }
 
@@ -224,6 +242,7 @@ export function BusinessProvider({
         businessId,
         switchBusinessId,
         businesses,
+        setBusinesses,
         deleteBusiness,
         updateBusiness,
       }}
