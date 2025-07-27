@@ -7,18 +7,22 @@ import { getErrorMessage } from "@/utils/utils";
 import { revalidatePath } from "next/cache";
 import { getCurrentBusinessId } from "./businesses";
 
+export interface CategoryWithProducts extends Category {
+  products: { id: string }[];
+  _count: {
+    products: number;
+  };
+}
 // Types
 interface CreateCategoryData {
   name: string;
   description?: string;
-  parentId?: string;
 }
 
 interface UpdateCategoryData {
   id: string;
   name?: string;
   description?: string;
-  parentId?: string;
   isActive?: boolean;
 }
 
@@ -28,7 +32,7 @@ interface CategoryResult {
 }
 
 interface CategoriesResult {
-  data: Category[] | null;
+  data: CategoryWithProducts[] | null;
   errorMessage: string | null;
 }
 
@@ -46,10 +50,6 @@ export const getCategoriesAction = async (): Promise<CategoriesResult> => {
         isActive: true,
       },
       include: {
-        parent: true,
-        children: {
-          where: { isActive: true },
-        },
         products: {
           where: { isActive: true },
           select: { id: true },
@@ -59,13 +59,10 @@ export const getCategoriesAction = async (): Promise<CategoriesResult> => {
             products: {
               where: { isActive: true },
             },
-            children: {
-              where: { isActive: true },
-            },
           },
         },
       },
-      orderBy: [{ parentId: "asc" }, { name: "asc" }],
+      orderBy: [{ name: "asc" }],
     });
 
     return { data: categories, errorMessage: null };
@@ -92,19 +89,12 @@ export const getCategoryAction = async (
         isActive: true,
       },
       include: {
-        parent: true,
-        children: {
-          where: { isActive: true },
-        },
         products: {
           where: { isActive: true },
         },
         _count: {
           select: {
             products: {
-              where: { isActive: true },
-            },
-            children: {
               where: { isActive: true },
             },
           },
@@ -133,28 +123,11 @@ export const createCategoryAction = async (
       throw new Error("No business selected");
     }
 
-    // Verify parent category exists if provided
-    if (data.parentId) {
-      const parentCategory = await prisma.category.findFirst({
-        where: {
-          id: data.parentId,
-          businessId,
-          isActive: true,
-        },
-      });
-
-      if (!parentCategory) {
-        throw new Error("Parent category not found");
-      }
-    }
-
     // Check if category name already exists at the same level
     const existingCategory = await prisma.category.findFirst({
       where: {
         name: data.name,
         businessId,
-        parentId: data.parentId || null,
-        isActive: true,
       },
     });
 
@@ -166,25 +139,11 @@ export const createCategoryAction = async (
       data: {
         name: data.name,
         description: data.description,
-        parentId: data.parentId,
         businessId,
-      },
-      include: {
-        parent: true,
-        children: {
-          where: { isActive: true },
-        },
-        _count: {
-          select: {
-            products: true,
-            children: true,
-          },
-        },
       },
     });
 
-    revalidatePath("/inventory/categories");
-    revalidatePath("/inventory/products");
+    revalidatePath("/inventory");
 
     return { data: category, errorMessage: null };
   } catch (error) {
@@ -215,35 +174,14 @@ export const updateCategoryAction = async (
       throw new Error("Category not found");
     }
 
-    // Verify parent category exists if provided
-    if (data.parentId && data.parentId !== existingCategory.parentId) {
-      const parentCategory = await prisma.category.findFirst({
-        where: {
-          id: data.parentId,
-          businessId,
-          isActive: true,
-        },
-      });
-
-      if (!parentCategory) {
-        throw new Error("Parent category not found");
-      }
-
-      // Prevent circular reference
-      if (data.parentId === data.id) {
-        throw new Error("Category cannot be its own parent");
-      }
-    }
-
     // Check if new name conflicts (if name is being changed)
     if (data.name && data.name !== existingCategory.name) {
       const nameConflict = await prisma.category.findFirst({
         where: {
+          id: { not: data.id },
           name: data.name,
           businessId,
-          parentId: data.parentId ?? existingCategory.parentId,
           isActive: true,
-          id: { not: data.id },
         },
       });
 
@@ -261,27 +199,19 @@ export const updateCategoryAction = async (
         ...(data.description !== undefined && {
           description: data.description,
         }),
-        ...(data.parentId !== undefined && { parentId: data.parentId }),
         ...(data.isActive !== undefined && { isActive: data.isActive }),
         updatedAt: new Date(),
       },
       include: {
-        parent: true,
-        children: {
-          where: { isActive: true },
-        },
         _count: {
           select: {
             products: true,
-            children: true,
           },
         },
       },
     });
 
-    revalidatePath("/inventory/categories");
-    revalidatePath("/inventory/products");
-
+    revalidatePath("/inventory");
     return { data: category, errorMessage: null };
   } catch (error) {
     console.error("Error updating category:", error);
@@ -312,31 +242,13 @@ export const deleteCategoryAction = async (
       throw new Error("Cannot delete category with active products");
     }
 
-    // Check if category has subcategories
-    const subcategoriesCount = await prisma.category.count({
-      where: {
-        parentId: id,
-        businessId,
-        isActive: true,
-      },
-    });
-
-    if (subcategoriesCount > 0) {
-      throw new Error("Cannot delete category with active subcategories");
-    }
-
-    const category = await prisma.category.update({
+    const category = await prisma.category.delete({
       where: {
         id,
       },
-      data: {
-        isActive: false,
-        updatedAt: new Date(),
-      },
     });
 
-    revalidatePath("/inventory/categories");
-    revalidatePath("/inventory/products");
+    revalidatePath("/inventory");
 
     return { data: category, errorMessage: null };
   } catch (error) {
@@ -344,51 +256,3 @@ export const deleteCategoryAction = async (
     return { data: null, errorMessage: getErrorMessage(error) };
   }
 };
-
-// Get category hierarchy (tree structure)
-export const getCategoryHierarchyAction =
-  async (): Promise<CategoriesResult> => {
-    try {
-      const businessId = await getCurrentBusinessId();
-      if (!businessId) {
-        throw new Error("No business selected");
-      }
-
-      // Get all categories and build tree structure
-      const categories = await prisma.category.findMany({
-        where: {
-          businessId,
-          isActive: true,
-        },
-        include: {
-          children: {
-            where: { isActive: true },
-            include: {
-              children: {
-                where: { isActive: true },
-              },
-              _count: {
-                select: {
-                  products: { where: { isActive: true } },
-                },
-              },
-            },
-          },
-          _count: {
-            select: {
-              products: { where: { isActive: true } },
-            },
-          },
-        },
-        orderBy: { name: "asc" },
-      });
-
-      // Filter to get only root categories (those without parent)
-      const rootCategories = categories.filter((cat) => !cat.parentId);
-
-      return { data: rootCategories, errorMessage: null };
-    } catch (error) {
-      console.error("Error fetching category hierarchy:", error);
-      return { data: null, errorMessage: getErrorMessage(error) };
-    }
-  };

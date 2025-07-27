@@ -1,7 +1,7 @@
 "use server";
 
 import prisma from "@/prisma/client";
-import { Product } from "@prisma/client";
+import { Category, Product } from "@prisma/client";
 import { Decimal } from "@prisma/client/runtime/library";
 import { createSupabaseClient } from "@/supabase/server";
 import { getErrorMessage } from "@/utils/utils";
@@ -9,12 +9,20 @@ import { revalidatePath } from "next/cache";
 import { getCurrentBusinessId } from "./businesses";
 
 // Types
+export interface ProductWithInventory extends Product {
+  category?: Category | null;
+  _count?: {
+    purchaseItems: number;
+    saleItems: number;
+    stockMovements: number;
+  };
+}
 interface CreateProductData {
   name: string;
   description?: string;
   sku?: string;
   barcode?: string;
-  categoryId: string;
+  categoryId?: string;
   brand?: string;
   model?: string;
   color?: string;
@@ -35,8 +43,9 @@ interface CreateProductData {
   taxRate: number;
   discountRate: number;
   isService?: boolean;
-  trackInventory?: boolean;
-  allowNegative?: boolean;
+  quantity: number;
+  reservedQty: number;
+  availableQty: number;
 }
 
 interface UpdateProductData {
@@ -67,8 +76,6 @@ interface UpdateProductData {
   discountRate?: number;
   isActive?: boolean;
   isService?: boolean;
-  trackInventory?: boolean;
-  allowNegative?: boolean;
 }
 
 interface ProductResult {
@@ -77,7 +84,7 @@ interface ProductResult {
 }
 
 interface ProductsResult {
-  data: Product[] | null;
+  data: ProductWithInventory[] | null;
   errorMessage: string | null;
 }
 
@@ -85,13 +92,26 @@ interface ProductFilters {
   categoryId?: string;
   brand?: string;
   isService?: boolean;
-  trackInventory?: boolean;
   lowStock?: boolean;
   search?: string;
   priceRange?: { min: number; max: number };
 }
 
 // Get all products for current business
+// Helper function to serialize Decimal fields to numbers for client components
+const serializeProduct = (product: any) => ({
+  ...product,
+  weight: product.weight ? Number(product.weight) : null,
+  unitConvertion: product.unitConvertion
+    ? Number(product.unitConvertion)
+    : null,
+  costPrice: Number(product.costPrice),
+  sellingPrice: Number(product.sellingPrice),
+  mrp: product.mrp ? Number(product.mrp) : null,
+  taxRate: Number(product.taxRate),
+  discountRate: Number(product.discountRate),
+});
+
 export const getProductsAction = async (
   filters?: ProductFilters,
 ): Promise<ProductsResult> => {
@@ -119,10 +139,6 @@ export const getProductsAction = async (
       whereClause.isService = filters.isService;
     }
 
-    if (filters?.trackInventory !== undefined) {
-      whereClause.trackInventory = filters.trackInventory;
-    }
-
     if (filters?.search) {
       whereClause.OR = [
         { name: { contains: filters.search, mode: "insensitive" } },
@@ -143,7 +159,6 @@ export const getProductsAction = async (
       where: whereClause,
       include: {
         category: true,
-        inventory: true,
         _count: {
           select: {
             purchaseItems: true,
@@ -159,14 +174,16 @@ export const getProductsAction = async (
     let filteredProducts = products;
     if (filters?.lowStock) {
       filteredProducts = products.filter((product) => {
-        const inventory = product.inventory[0];
-        return inventory && product.minStockLevel
-          ? inventory.availableQty <= product.minStockLevel
+        return product.minStockLevel
+          ? product.availableQty <= product.minStockLevel
           : false;
       });
     }
 
-    return { data: filteredProducts, errorMessage: null };
+    // Serialize Decimal fields to numbers
+    const serializedProducts = filteredProducts.map(serializeProduct);
+
+    return { data: serializedProducts, errorMessage: null };
   } catch (error) {
     console.error("Error fetching products:", error);
     return { data: null, errorMessage: getErrorMessage(error) };
@@ -189,7 +206,6 @@ export const getProductAction = async (id: string): Promise<ProductResult> => {
       },
       include: {
         category: true,
-        inventory: true,
         productBatch: true,
         priceHistory: {
           orderBy: { effectiveFrom: "desc" },
@@ -242,16 +258,18 @@ export const createProductAction = async (
     if (!dbUser) throw new Error("User not found");
 
     // Verify category exists
-    const category = await prisma.category.findFirst({
-      where: {
-        id: data.categoryId,
-        businessId,
-        isActive: true,
-      },
-    });
+    if (data.categoryId) {
+      const category = await prisma.category.findFirst({
+        where: {
+          id: data.categoryId,
+          businessId,
+          isActive: true,
+        },
+      });
 
-    if (!category) {
-      throw new Error("Category not found");
+      if (!category) {
+        throw new Error("Category not found");
+      }
     }
 
     // Generate SKU if not provided
@@ -322,28 +340,16 @@ export const createProductAction = async (
           taxRate: new Decimal(data.taxRate),
           discountRate: new Decimal(data.discountRate),
           isService: data.isService || false,
-          trackInventory: data.trackInventory !== false,
-          allowNegative: data.allowNegative || false,
           businessId,
+          reservedQty: data.reservedQty || 0,
+          availableQty: data.availableQty || 0,
+          totalQuantity: data.quantity || 0,
           createdBy: dbUser.id,
         },
         include: {
           category: true,
         },
       });
-
-      // Create inventory record if product tracks inventory
-      if (newProduct.trackInventory) {
-        await tx.inventory.create({
-          data: {
-            productId: newProduct.id,
-            businessId,
-            quantity: 0,
-            reservedQty: 0,
-            availableQty: 0,
-          },
-        });
-      }
 
       // Create initial price history
       await tx.priceHistory.create({
@@ -359,7 +365,6 @@ export const createProductAction = async (
       return newProduct;
     });
 
-    revalidatePath("/inventory/products");
     revalidatePath("/inventory");
 
     return { data: product, errorMessage: null };
@@ -516,12 +521,6 @@ export const updateProductAction = async (
           }),
           ...(data.isActive !== undefined && { isActive: data.isActive }),
           ...(data.isService !== undefined && { isService: data.isService }),
-          ...(data.trackInventory !== undefined && {
-            trackInventory: data.trackInventory,
-          }),
-          ...(data.allowNegative !== undefined && {
-            allowNegative: data.allowNegative,
-          }),
           updatedBy: dbUser.id,
           updatedAt: new Date(),
         },
@@ -550,7 +549,6 @@ export const updateProductAction = async (
       return updatedProduct;
     });
 
-    revalidatePath("/inventory/products");
     revalidatePath("/inventory");
 
     return { data: product, errorMessage: null };
@@ -591,7 +589,6 @@ export const deleteProductAction = async (
       },
     });
 
-    revalidatePath("/inventory/products");
     revalidatePath("/inventory");
 
     return { data: product, errorMessage: null };
@@ -613,22 +610,24 @@ export const getLowStockProductsAction = async (): Promise<ProductsResult> => {
       where: {
         businessId,
         isActive: true,
-        trackInventory: true,
         minStockLevel: { not: null },
       },
       include: {
         category: true,
-        inventory: true,
       },
     });
 
     // Filter products where available quantity is below minimum stock level
-    const lowStockProducts = products.filter((product) => {
-      const inventory = product.inventory[0];
-      return inventory && product.minStockLevel
-        ? inventory.availableQty <= product.minStockLevel
-        : false;
-    });
+    const lowStockProducts = products
+      .filter((product) => {
+        return product.minStockLevel
+          ? product.availableQty <= product.minStockLevel
+          : false;
+      })
+      .map((product) => ({
+        ...serializeProduct(product),
+        category: product.category,
+      }));
 
     return { data: lowStockProducts, errorMessage: null };
   } catch (error) {

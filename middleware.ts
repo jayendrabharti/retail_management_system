@@ -1,16 +1,9 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-/**
- * Middleware for route protection and authentication handling
- * - Protects main application routes from unauthenticated access
- * - Redirects authenticated users away from auth pages
- * - Uses Supabase Auth for session management
- */
 export async function middleware(request: NextRequest) {
   const path = new URL(request.url).pathname;
 
-  // Define routes that require authentication
   const protectedRoutes = [
     "/dashboard",
     "/parties",
@@ -20,7 +13,6 @@ export async function middleware(request: NextRequest) {
     "/settings",
   ];
 
-  // Define authentication-related routes (login/signup)
   const authRoutes = ["/login", "/signup"];
 
   const isProtectedRoute = protectedRoutes.some(
@@ -29,19 +21,15 @@ export async function middleware(request: NextRequest) {
   const isAuthRoute = authRoutes.includes(path);
 
   const response = NextResponse.next();
+  const user = await getUser(request, response);
 
-  // Only run auth checks on protected or auth routes for performance
   if (isProtectedRoute || isAuthRoute) {
-    const user = await getUser(request, response);
-
-    // Redirect unauthenticated users trying to access protected routes
     if (isProtectedRoute && !user) {
-      return NextResponse.rewrite(new URL("/unauthorized", request.url));
+      return NextResponse.redirect(new URL("/login", request.url));
     }
 
-    // Redirect authenticated users away from login/signup pages
     if (isAuthRoute && user) {
-      return NextResponse.rewrite(new URL("/authorized", request.url));
+      return NextResponse.redirect(new URL("/dashboard", request.url));
     }
   }
 
@@ -54,10 +42,6 @@ export const config = {
   ],
 };
 
-/**
- * Helper function to extract user session from Supabase cookies
- * Creates a server-side Supabase client and retrieves the authenticated user
- */
 async function getUser(request: NextRequest, response: NextResponse) {
   const supabaseClient = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

@@ -75,9 +75,9 @@ export default function SignUpForm({
       }}
     >
       {({ isSubmitting, errors, touched }) => (
-        <Form className="flex flex-col space-y-4 bg-background p-5 rounded-lg border border-border min-w-sm m-2 shadow-md">
-          <h2 className="text-2xl font-bold mb-4 ml-2">Sign Up</h2>
-          <span className="text-sm ml-2 text-muted-foreground">
+        <Form className="bg-background border-border m-2 flex min-w-sm flex-col space-y-4 rounded-lg border p-5 shadow-md">
+          <h2 className="mb-4 ml-2 text-2xl font-bold">Sign Up</h2>
+          <span className="text-muted-foreground ml-2 text-sm">
             Enter your email below to login to your account
           </span>
 
@@ -94,17 +94,17 @@ export default function SignUpForm({
             />
           ))}
 
-          <span className="ml-2 text-muted-foreground">
+          <span className="text-muted-foreground ml-2">
             <input
               type="checkbox"
               checked={agreed}
               onChange={(e) => setAgreed(e.target.checked)}
-              className="mr-1 accent-primary"
+              className="accent-primary mr-1"
             />
             Agree with&nbsp;
             <Link
               href={`/terms-and-conditons`}
-              className="text-primary hover:underline font-bold"
+              className="text-primary font-bold hover:underline"
               prefetch={true}
             >
               Terms & Conditions
@@ -114,18 +114,18 @@ export default function SignUpForm({
           <button
             type="submit"
             disabled={!agreed || isSubmitting}
-            className="w-full py-2 px-4 bg-primary hover:bg-primary/80 text-primary-foreground font-semibold rounded focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 text-sm"
+            className="bg-primary hover:bg-primary/80 text-primary-foreground focus:ring-ring w-full rounded px-4 py-2 text-sm font-semibold focus:ring-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isSubmitting ? "Signing up..." : "Sign Up"}
           </button>
 
           {/* <LoginWithGoogle type={"signup"} /> */}
 
-          <span className="mx-auto text-muted-foreground">
+          <span className="text-muted-foreground mx-auto">
             Already have an account?&nbsp;
             <Link
               href={`/login`}
-              className="text-primary hover:underline font-bold"
+              className="text-primary font-bold hover:underline"
               prefetch={true}
             >
               Login
@@ -178,20 +178,20 @@ const FormField: React.FC<FormFieldProps> = ({
         autoComplete={autoComplete}
         placeholder=""
         className={cn(
-          "peer w-full p-2 rounded focus:outline-none focus:ring-2 focus:ring-ring border",
-          invalid ? "border-destructive" : "border-input"
+          "peer focus:ring-ring w-full rounded border p-2 focus:ring-2 focus:outline-none",
+          invalid ? "border-destructive" : "border-input",
         )}
       />
       <label
         htmlFor={id}
         className={cn(
-          "absolute -translate-y-1/2 left-3 peer-focus:top-0 peer-placeholder-shown:top-1/2 cursor-text",
+          "absolute left-3 -translate-y-1/2 cursor-text peer-placeholder-shown:top-1/2 peer-focus:top-0",
           invalid
             ? "text-destructive"
             : "text-muted-foreground peer-focus:text-foreground",
           "transition-all duration-300",
           "bg-background px-1",
-          "font-bold text-sm peer-focus:text-lg"
+          "text-sm font-bold peer-focus:text-lg",
         )}
       >
         {label}
@@ -199,7 +199,7 @@ const FormField: React.FC<FormFieldProps> = ({
       <ErrorMessage
         name={name}
         component="div"
-        className="text-destructive text-xs absolute top-full right-2"
+        className="text-destructive absolute top-full right-2 text-xs"
       />
       {type === "password" && (
         <PasswordIcon
@@ -208,7 +208,7 @@ const FormField: React.FC<FormFieldProps> = ({
             e.preventDefault();
             e.stopPropagation();
           }}
-          className="absolute right-0 border-l h-full border-input top-0 px-2 size-10 text-muted-foreground hover:text-foreground"
+          className="border-input text-muted-foreground hover:text-foreground absolute top-0 right-0 size-10 h-full border-l px-2"
         />
       )}
     </div>

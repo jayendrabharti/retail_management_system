@@ -14,31 +14,30 @@ datasource db {
 
 /**
  * User Model - Core user authentication and profile data
- * 
  * Integrates with Supabase Auth for authentication while maintaining
  * application-specific user data and business relationships.
  */
 model User {
-  id                 String     @id @default(cuid())
-  userId             String     @unique // Supabase Auth user ID
-  phone              String     @unique
-  email              String?    @unique
+  id                 String    @id @default(cuid())
+  userId             String    @unique // Supabase Auth user ID
+  phone              String    @unique
+  email              String?   @unique
   fullName           String?
   firstName          String?
   middleName         String?
   lastName           String?
   profileImage       String?
-  isActive           Boolean    @default(true)
-  role               UserRole   @default(EMPLOYEE)
-  languagePreference String     @default("english")
-  currency           String     @default("rupees")
-  country            String     @default("india")
-  isPremium          Boolean    @default(false)
+  isActive           Boolean   @default(true)
+  role               UserRole  @default(EMPLOYEE)
+  languagePreference String    @default("english")
+  currency           String    @default("rupees")
+  country            String    @default("india")
+  isPremium          Boolean   @default(false)
   premiumTier        String?
   premiumExpiresAt   DateTime?
-  lastLogIn         DateTime?
-  createdAt          DateTime   @default(now())
-  updatedAt          DateTime   @updatedAt
+  lastLogIn          DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   // Relationships
   businessUsers   BusinessUser[] // Many-to-many with businesses
@@ -48,27 +47,26 @@ model User {
 }
 
 enum UserRole {
-  SUPER_ADMIN    // Platform administrator
+  SUPER_ADMIN // Platform administrator
   BUSINESS_OWNER // Owner of a business
-  MANAGER        // Business manager
-  EMPLOYEE       // Regular employee
-  ACCOUNTANT     // Finance/accounting staff
+  MANAGER // Business manager
+  EMPLOYEE // Regular employee
+  ACCOUNTANT // Finance/accounting staff
 }
 
 /**
  * Audit Log - System-wide activity tracking
- * 
  * Tracks all CRUD operations across the platform for compliance,
  * debugging, and security monitoring.
  */
 model AuditLog {
   id        String   @id @default(cuid())
-  tableName String   // Table that was modified
-  recordId  String   // ID of the record that was modified
-  action    String   // "CREATE", "UPDATE", "DELETE"
-  oldData   Json?    // Previous state of the record
-  newData   Json?    // New state of the record
-  userId    String   // Who made the change
+  tableName String // Table that was modified
+  recordId  String // ID of the record that was modified
+  action    String // "CREATE", "UPDATE", "DELETE"
+  oldData   Json? // Previous state of the record
+  newData   Json? // New state of the record
+  userId    String // Who made the change
   createdAt DateTime @default(now())
 
   @@index([tableName, recordId])
@@ -81,7 +79,6 @@ model AuditLog {
 
 /**
  * Business Model - Core tenant entity for multi-tenant architecture
- * 
  * Each business represents an independent tenant with its own:
  * - Users and permissions
  * - Products and inventory
@@ -122,7 +119,6 @@ model Business {
   sales           Sale[]
   returns         Return[]
   expenses        Expense[]
-  inventory       Inventory[]
   accounts        Account[]
   transactions    Transaction[]
   cashbook        CashbookEntry[]
@@ -199,7 +195,7 @@ model Category {
   id          String   @id @default(cuid())
   name        String
   description String?
-  parentId    String?
+  parentId    String? // Self-referential for subcategories
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -207,14 +203,15 @@ model Category {
   businessId String
   business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
-  // Self-referential relationship for subcategories
-  parent   Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
-  children Category[] @relation("CategoryHierarchy")
+  // Self-referential relationships
+  parent   Category?  @relation("CategoryParent", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryParent")
 
   // Relationships
   products Product[]
 
   @@index([businessId, isActive])
+  @@index([businessId, parentId])
   @@map("categories")
 }
 
@@ -245,8 +242,10 @@ model Product {
   discountRate   Decimal
   isActive       Boolean  @default(true)
   isService      Boolean  @default(false)
-  trackInventory Boolean  @default(true)
-  allowNegative  Boolean  @default(false)
+  totalQuantity  Int      @default(0)
+  reservedQty    Int      @default(0)
+  availableQty   Int      @default(0)
+  shelf          String?
   createdBy      String?
   updatedBy      String?
   createdAt      DateTime @default(now())
@@ -255,11 +254,10 @@ model Product {
   businessId String
   business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
-  categoryId String
-  category   Category @relation(fields: [categoryId], references: [id])
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id])
 
   // Relationships
-  inventory      Inventory[]
   purchaseItems  PurchaseItem[]
   saleItems      SaleItem[]
   stockMovements StockMovement[]
@@ -284,27 +282,6 @@ model ProductBatch {
   product   Product @relation(fields: [productId], references: [id])
 
   @@unique([productId, batchNumber])
-}
-
-model Inventory {
-  id           String   @id @default(cuid())
-  quantity     Int      @default(0)
-  reservedQty  Int      @default(0)
-  availableQty Int      @default(0) // Auto-calculated: quantity - reservedQty
-  shelf        String?
-  lastUpdated  DateTime @default(now())
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  productId String
-  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-
-  businessId String
-  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-
-  @@unique([productId, businessId])
-  @@index([businessId])
-  @@map("inventory")
 }
 
 // Track all inventory movements

@@ -44,7 +44,7 @@ export const getErrorMessage = (
  */
 export const formatTimestamp = (
   timestamp: string | number | Date,
-  format = 1,
+  format: 1 | 2 = 1,
 ) => {
   if (!timestamp) return null;
 
@@ -65,3 +65,7 @@ export const formatTimestamp = (
   // Format 1: Full timestamp (e.g., "15 January 2024 • 2:30 pm")
   return `${day} ${month} ${year} • ${hours}:${minutes} ${ampm}`;
 };
+
+export async function DELAY(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
